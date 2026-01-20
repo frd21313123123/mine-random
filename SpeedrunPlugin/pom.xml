@@ -6,7 +6,7 @@
 
     <groupId>com.speedrun</groupId>
     <artifactId>SpeedrunPlugin</artifactId>
-    <version>1.2.0</version>
+    <version>1.4.0</version>
     <packaging>jar</packaging>
 
     <name>SpeedrunPlugin</name>

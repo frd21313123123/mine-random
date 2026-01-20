@@ -14,7 +14,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.meta.FireworkMeta;
 
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,6 +28,7 @@ import java.util.*;
 public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     private boolean gameActive = false;
+    private boolean gameStarted = false; // True after countdown, false during countdown
     private Material targetItem = null;
     private long startTime = 0;
     private BukkitTask inventoryCheckTask = null;
@@ -37,6 +40,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private final Map<UUID, Location> playerPlatforms = new HashMap<>();
     private final Set<UUID> fallingPlayers = new HashSet<>();
     private final Set<UUID> protectedPlayers = new HashSet<>();
+    private final Set<UUID> activePlayers = new HashSet<>(); // Players still in the game
+    private int initialPlayerCount = 0; // How many players started the game
 
     @Override
     public void onEnable() {
@@ -132,9 +137,9 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         // Start tab update
         startTabUpdate();
 
-        // Countdown from 10
+        // Countdown from 20
         new BukkitRunnable() {
-            int countdown = 10;
+            int countdown = 20;
 
             @Override
             public void run() {
@@ -152,7 +157,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 if (countdown <= 5) {
                     broadcastTitle(ChatColor.RED + String.valueOf(countdown), "", 0, 25, 0);
                     playCountdownSound();
-                } else {
+                } else if (countdown % 5 == 0) {
                     broadcastMessage(ChatColor.YELLOW + "Старт через " + countdown + " секунд...");
                 }
 
@@ -262,7 +267,14 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     255, // Max amplifier (invulnerable)
                     false,
                     false));
+
+            // Add to active players list
+            activePlayers.add(player.getUniqueId());
         }
+
+        // Store initial player count for last-man-standing logic
+        initialPlayerCount = activePlayers.size();
+        gameStarted = true;
 
         // Play start sound
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -374,6 +386,61 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    // Event handler for player death - remove from active players
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        if (!gameActive || !gameStarted)
+            return;
+
+        Player player = event.getEntity();
+        activePlayers.remove(player.getUniqueId());
+
+        broadcastMessage(ChatColor.RED + "☠ " + player.getName() + " погиб! Осталось игроков: " + activePlayers.size());
+
+        checkLastManStanding();
+    }
+
+    // Event handler for player quit - remove from active players
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        if (!gameActive || !gameStarted)
+            return;
+
+        Player player = event.getPlayer();
+        if (activePlayers.contains(player.getUniqueId())) {
+            activePlayers.remove(player.getUniqueId());
+
+            broadcastMessage(ChatColor.YELLOW + "⚠ " + player.getName() + " вышел из игры! Осталось игроков: "
+                    + activePlayers.size());
+
+            checkLastManStanding();
+        }
+    }
+
+    // Check if only one player remains and declare them winner
+    private void checkLastManStanding() {
+        if (!gameActive || !gameStarted)
+            return;
+
+        // Only trigger last-man-standing if game started with more than 1 player
+        if (initialPlayerCount <= 1)
+            return;
+
+        if (activePlayers.size() == 1) {
+            UUID winnerUUID = activePlayers.iterator().next();
+            Player winner = Bukkit.getPlayer(winnerUUID);
+
+            if (winner != null && winner.isOnline()) {
+                broadcastMessage(ChatColor.GOLD + "🏆 " + winner.getName() + " — последний выживший!");
+                playerWins(winner);
+            }
+        } else if (activePlayers.isEmpty()) {
+            // Everyone died/left
+            stopGame();
+            broadcastMessage(ChatColor.RED + "Все игроки погибли! Игра окончена без победителя.");
+        }
+    }
+
     private void playerWins(Player winner) {
         long endTime = System.currentTimeMillis();
         String finalTime = formatTime(endTime - startTime);
@@ -460,13 +527,16 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     private void stopGame() {
         gameActive = false;
+        gameStarted = false;
         targetItem = null;
         startTime = 0;
+        initialPlayerCount = 0;
 
         // Clear all tracking
         playerPlatforms.clear();
         fallingPlayers.clear();
         protectedPlayers.clear();
+        activePlayers.clear();
 
         if (inventoryCheckTask != null) {
             inventoryCheckTask.cancel();
