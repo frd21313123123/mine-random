@@ -55,6 +55,38 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         getLogger().info("SpeedrunPlugin disabled.");
     }
 
+    // Generate a list of all survival-obtainable items
+    private List<Material> getAllObtainableItems() {
+        List<Material> items = new ArrayList<>();
+        for (Material material : Material.values()) {
+            if (!material.isItem())
+                continue;
+            if (material.isLegacy())
+                continue;
+
+            String name = material.name();
+            // Filter out technical, unobtainable, and experimental items
+            if (name.contains("AIR") ||
+                    name.equals("BARRIER") ||
+                    name.equals("BEDROCK") ||
+                    name.contains("COMMAND_BLOCK") ||
+                    name.contains("STRUCTURE") ||
+                    name.contains("JIGSAW") ||
+                    name.equals("DEBUG_STICK") ||
+                    name.equals("KNOWLEDGE_BOOK") ||
+                    name.contains("SPAWN_EGG") ||
+                    name.equals("LIGHT") ||
+                    name.contains("POTTED_") ||
+                    name.endsWith("_WALL") ||
+                    name.startsWith("MOVING_") ||
+                    name.startsWith("PISTON_"))
+                continue;
+
+            items.add(material);
+        }
+        return items;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("speedrun")) {
@@ -69,19 +101,29 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             }
 
             if (args.length < 1) {
-                sender.sendMessage(ChatColor.RED + "Использование: /speedrun <item_id>");
+                sender.sendMessage(ChatColor.RED + "Использование: /speedrun <item_id> или /speedrun random");
                 sender.sendMessage(ChatColor.GRAY + "Пример: /speedrun minecraft:diamond");
+                sender.sendMessage(ChatColor.GRAY + "Или: /speedrun random — случайный предмет");
                 return true;
             }
 
-            String itemId = args[0].replace("minecraft:", "").toUpperCase();
+            String itemArg = args[0].toLowerCase();
 
-            try {
-                targetItem = Material.valueOf(itemId);
-            } catch (IllegalArgumentException e) {
-                sender.sendMessage(ChatColor.RED + "Неизвестный предмет: " + args[0]);
-                sender.sendMessage(ChatColor.GRAY + "Убедитесь, что ID правильный (например: minecraft:diamond)");
-                return true;
+            // Check for random mode
+            if (itemArg.equals("random") || itemArg.equals("случайный")) {
+                List<Material> obtainable = getAllObtainableItems();
+                targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                sender.sendMessage(
+                        ChatColor.GREEN + "✓ Выбран случайный предмет: " + ChatColor.AQUA + formatItemName(targetItem));
+            } else {
+                String itemId = itemArg.replace("minecraft:", "").toUpperCase();
+                try {
+                    targetItem = Material.valueOf(itemId);
+                } catch (IllegalArgumentException e) {
+                    sender.sendMessage(ChatColor.RED + "Неизвестный предмет: " + args[0]);
+                    sender.sendMessage(ChatColor.GRAY + "Убедитесь, что ID правильный (например: minecraft:diamond)");
+                    return true;
+                }
             }
 
             startPreGame();
@@ -120,11 +162,11 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             player.setExp(0);
             player.setLevel(0);
 
+            // Add for Adventure Mode initially (while on platform)
+            player.setGameMode(GameMode.ADVENTURE);
+
             // Add fall protection initially (safe while on platform)
             protectedPlayers.add(player.getUniqueId());
-
-            // Force Survival Mode immediately
-            player.setGameMode(GameMode.SURVIVAL);
         }
 
         broadcastTitle(ChatColor.GOLD + "СПИДРАН", ChatColor.YELLOW + "Цель: " + formatItemName(targetItem), 10, 40,
