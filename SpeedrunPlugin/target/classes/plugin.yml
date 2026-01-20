@@ -1,0 +1,24 @@
+name: SpeedrunPlugin
+version: 1.0.0
+main: com.speedrun.SpeedrunPlugin
+api-version: '1.21'
+description: Item Speedrun Competition Plugin
+author: Randomizer
+
+commands:
+  speedrun:
+    description: Start a speedrun competition
+    usage: /speedrun <item_id>
+    permission: speedrun.start
+  speedrunstop:
+    description: Stop current speedrun
+    usage: /speedrunstop
+    permission: speedrun.stop
+
+permissions:
+  speedrun.start:
+    description: Allows starting a speedrun
+    default: op
+  speedrun.stop:
+    description: Allows stopping a speedrun
+    default: op
