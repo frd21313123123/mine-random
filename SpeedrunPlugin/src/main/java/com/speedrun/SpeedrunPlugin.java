@@ -7,6 +7,8 @@ import org.bukkit.GameMode;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -23,6 +25,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class SpeedrunPlugin extends JavaPlugin implements Listener {
@@ -36,6 +42,17 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private BukkitTask tabUpdateTask = null;
     private final Random random = new Random();
 
+    // Configuration
+    private FileConfiguration messagesConfig;
+    private int countdownTime;
+    private int platformHeight;
+    private int fallProtectionDuration;
+    private int spawnRange;
+    private boolean fireworksEnabled;
+    private int fireworksCount;
+    private boolean soundsEnabled;
+    private boolean easyMode;
+
     // Tracking
     private final Map<UUID, Location> playerPlatforms = new HashMap<>();
     private final Set<UUID> fallingPlayers = new HashSet<>();
@@ -45,8 +62,73 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        // Save default config
+        saveDefaultConfig();
+
+        // Create lang folder and save default language files
+        File langFolder = new File(getDataFolder(), "lang");
+        if (!langFolder.exists()) {
+            langFolder.mkdirs();
+        }
+
+        // Save default language files if they don't exist
+        saveResource("lang/messages_ru.yml", false);
+        saveResource("lang/messages_en.yml", false);
+
+        // Load configuration
+        loadConfiguration();
+
         getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("SpeedrunPlugin enabled! Use /speedrun <item_id> to start.");
+    }
+
+    private void loadConfiguration() {
+        reloadConfig();
+        FileConfiguration config = getConfig();
+
+        // Load settings from config
+        String language = config.getString("language", "ru");
+        countdownTime = config.getInt("game.countdown", 20);
+        platformHeight = config.getInt("game.platform-height", 200);
+        fallProtectionDuration = config.getInt("game.fall-protection-duration", 20);
+        spawnRange = config.getInt("game.spawn-range", 5000);
+        fireworksEnabled = config.getBoolean("fireworks.enabled", true);
+        fireworksCount = config.getInt("fireworks.count", 10);
+        soundsEnabled = config.getBoolean("sounds.enabled", true);
+        easyMode = config.getBoolean("game.easy-mode", false);
+
+        // Load language file
+        File langFile = new File(getDataFolder(), "lang/messages_" + language + ".yml");
+        if (!langFile.exists()) {
+            getLogger().warning("Language file not found: " + language + ", falling back to Russian");
+            langFile = new File(getDataFolder(), "lang/messages_ru.yml");
+        }
+        messagesConfig = YamlConfiguration.loadConfiguration(langFile);
+
+        // Load defaults from jar for missing keys
+        InputStream defaultStream = getResource("lang/messages_" + language + ".yml");
+        if (defaultStream != null) {
+            YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(defaultStream, StandardCharsets.UTF_8));
+            messagesConfig.setDefaults(defaultConfig);
+        }
+
+        getLogger().info("Loaded language: " + language);
+    }
+
+    public String getMessage(String key) {
+        String message = messagesConfig.getString(key, key);
+        return ChatColor.translateAlternateColorCodes('&', message);
+    }
+
+    public String getMessage(String key, Object... replacements) {
+        String message = getMessage(key);
+        for (int i = 0; i < replacements.length; i += 2) {
+            if (i + 1 < replacements.length) {
+                message = message.replace("%" + replacements[i] + "%", String.valueOf(replacements[i + 1]));
+            }
+        }
+        return message;
     }
 
     @Override
@@ -91,19 +173,19 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("speedrun")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Эту команду может выполнить только игрок!");
+                sender.sendMessage(getMessage("only-player"));
                 return true;
             }
 
             if (gameActive) {
-                sender.sendMessage(ChatColor.RED + "Игра уже запущена! Используйте /speedrunstop чтобы остановить.");
+                sender.sendMessage(getMessage("game-already-running"));
                 return true;
             }
 
             if (args.length < 1) {
-                sender.sendMessage(ChatColor.RED + "Использование: /speedrun <item_id> или /speedrun random");
-                sender.sendMessage(ChatColor.GRAY + "Пример: /speedrun minecraft:diamond");
-                sender.sendMessage(ChatColor.GRAY + "Или: /speedrun random — случайный предмет");
+                sender.sendMessage(getMessage("usage"));
+                sender.sendMessage(getMessage("usage-example"));
+                sender.sendMessage(getMessage("usage-random"));
                 return true;
             }
 
@@ -113,15 +195,14 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             if (itemArg.equals("random") || itemArg.equals("случайный")) {
                 List<Material> obtainable = getAllObtainableItems();
                 targetItem = obtainable.get(random.nextInt(obtainable.size()));
-                sender.sendMessage(
-                        ChatColor.GREEN + "✓ Выбран случайный предмет: " + ChatColor.AQUA + formatItemName(targetItem));
+                sender.sendMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
             } else {
                 String itemId = itemArg.replace("minecraft:", "").toUpperCase();
                 try {
                     targetItem = Material.valueOf(itemId);
                 } catch (IllegalArgumentException e) {
-                    sender.sendMessage(ChatColor.RED + "Неизвестный предмет: " + args[0]);
-                    sender.sendMessage(ChatColor.GRAY + "Убедитесь, что ID правильный (например: minecraft:diamond)");
+                    sender.sendMessage(getMessage("unknown-item", "item", args[0]));
+                    sender.sendMessage(getMessage("check-item-id"));
                     return true;
                 }
             }
@@ -131,11 +212,11 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         } else if (command.getName().equalsIgnoreCase("speedrunstop")) {
             if (!gameActive) {
-                sender.sendMessage(ChatColor.RED + "Игра не запущена.");
+                sender.sendMessage(getMessage("game-not-running"));
                 return true;
             }
             stopGame();
-            broadcastMessage(ChatColor.YELLOW + "⚠ Спидран остановлен администратором!");
+            broadcastMessage(getMessage("game-stopped-admin"));
             return true;
         }
 
@@ -169,19 +250,20 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             protectedPlayers.add(player.getUniqueId());
         }
 
-        broadcastTitle(ChatColor.GOLD + "СПИДРАН", ChatColor.YELLOW + "Цель: " + formatItemName(targetItem), 10, 40,
+        broadcastTitle(getMessage("game-title"), getMessage("game-subtitle", "item", formatItemName(targetItem)), 10,
+                40,
                 10);
-        broadcastMessage(ChatColor.GREEN + "═══════════════════════════════════");
-        broadcastMessage(ChatColor.GOLD + "🎯 СПИДРАН НАЧИНАЕТСЯ!");
-        broadcastMessage(ChatColor.WHITE + "Цель: " + ChatColor.AQUA + formatItemName(targetItem));
-        broadcastMessage(ChatColor.GREEN + "═══════════════════════════════════");
+        broadcastMessage(getMessage("game-start-message"));
+        broadcastMessage(getMessage("game-announcement"));
+        broadcastMessage(getMessage("game-target", "item", formatItemName(targetItem)));
+        broadcastMessage(getMessage("game-start-message"));
 
         // Start tab update
         startTabUpdate();
 
-        // Countdown from 20
+        // Countdown
         new BukkitRunnable() {
-            int countdown = 20;
+            int countdown = countdownTime;
 
             @Override
             public void run() {
@@ -200,7 +282,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     broadcastTitle(ChatColor.RED + String.valueOf(countdown), "", 0, 25, 0);
                     playCountdownSound();
                 } else if (countdown % 5 == 0) {
-                    broadcastMessage(ChatColor.YELLOW + "Старт через " + countdown + " секунд...");
+                    broadcastMessage(getMessage("countdown-message", "seconds", countdown));
                 }
 
                 countdown--;
@@ -214,7 +296,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
             int x = safeLoc.getBlockX();
             int z = safeLoc.getBlockZ();
-            int y = 200; // High in the sky
+            int y = platformHeight; // High in the sky
 
             Location platformCenter = new Location(world, x, y, z);
 
@@ -227,15 +309,15 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             // Teleport player on top of platform
             Location playerLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
             player.teleport(playerLoc);
-            player.sendMessage(ChatColor.GREEN + "✓ Вы телепортированы в случайную точку: X=" + x + " Z=" + z);
+            player.sendMessage(getMessage("teleport-message", "x", x, "z", z));
         }
     }
 
     private Location findSafeLocation(World world) {
         int attempts = 100;
         while (attempts > 0) {
-            int x = random.nextInt(10000) - 5000;
-            int z = random.nextInt(10000) - 5000;
+            int x = random.nextInt(spawnRange * 2) - spawnRange;
+            int z = random.nextInt(spawnRange * 2) - spawnRange;
 
             // Check biome
             org.bukkit.block.Biome biome = world.getBiome(x, 64, z); // check biome at sea level
@@ -266,17 +348,40 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     }
 
     private void createPlatform(World world, int centerX, int centerY, int centerZ) {
-        for (int x = centerX - 2; x <= centerX + 2; x++) {
-            for (int z = centerZ - 2; z <= centerZ + 2; z++) {
+        // Create a 3x3x4 glass capsule (enclosed on all sides except the top for
+        // visibility)
+        // Floor (Y)
+        for (int x = centerX - 1; x <= centerX + 1; x++) {
+            for (int z = centerZ - 1; z <= centerZ + 1; z++) {
                 world.getBlockAt(x, centerY, z).setType(Material.GLASS);
+            }
+        }
+        // Walls (Y+1, Y+2)
+        for (int y = centerY + 1; y <= centerY + 2; y++) {
+            for (int x = centerX - 1; x <= centerX + 1; x++) {
+                for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+                    // Only set walls (edges), leave interior air
+                    if (x == centerX - 1 || x == centerX + 1 || z == centerZ - 1 || z == centerZ + 1) {
+                        world.getBlockAt(x, y, z).setType(Material.GLASS);
+                    }
+                }
+            }
+        }
+        // Ceiling (Y+3)
+        for (int x = centerX - 1; x <= centerX + 1; x++) {
+            for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+                world.getBlockAt(x, centerY + 3, z).setType(Material.GLASS);
             }
         }
     }
 
     private void removePlatform(World world, int centerX, int centerY, int centerZ) {
-        for (int x = centerX - 2; x <= centerX + 2; x++) {
-            for (int z = centerZ - 2; z <= centerZ + 2; z++) {
-                world.getBlockAt(x, centerY, z).setType(Material.AIR);
+        // Remove the entire capsule (floor, walls, ceiling)
+        for (int y = centerY; y <= centerY + 3; y++) {
+            for (int x = centerX - 1; x <= centerX + 1; x++) {
+                for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+                    world.getBlockAt(x, y, z).setType(Material.AIR);
+                }
             }
         }
     }
@@ -323,7 +428,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
         }
 
-        broadcastTitle(ChatColor.GREEN + "СТАРТ!", ChatColor.AQUA + "Найдите: " + formatItemName(targetItem), 0, 40,
+        broadcastTitle(getMessage("start-title"), getMessage("start-subtitle", "item", formatItemName(targetItem)), 0,
+                40,
                 10);
 
         startTime = System.currentTimeMillis();
@@ -364,10 +470,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 }
 
                 String time = startTime > 0 ? formatTimeSeconds(System.currentTimeMillis() - startTime) : "00:00";
-                String header = ChatColor.GOLD + "═══ " + ChatColor.WHITE + "СПИДРАН" + ChatColor.GOLD + " ═══\n" +
-                        ChatColor.YELLOW + "Цель: " + ChatColor.AQUA + formatItemName(targetItem);
-                String footer = ChatColor.GREEN + "⏱ Время: " + ChatColor.WHITE + time + "\n" +
-                        ChatColor.GRAY + "Игроков: " + Bukkit.getOnlinePlayers().size();
+                String header = getMessage("tab-header", "item", formatItemName(targetItem));
+                String footer = getMessage("tab-footer", "time", time, "count", Bukkit.getOnlinePlayers().size());
 
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     player.setPlayerListHeaderFooter(header, footer);
@@ -408,8 +512,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             if (blockBelowIsSolid && !isMovingDown) {
                 fallingPlayers.remove(uuid);
 
-                // Keep protection for 20 seconds after landing (increased from 5s)
-                player.sendMessage(ChatColor.YELLOW + "⚠ Вы приземлились! Защита от падения спадет через 20 секунд.");
+                // Keep protection for configured seconds after landing
+                player.sendMessage(getMessage("landed-message", "seconds", fallProtectionDuration));
 
                 new BukkitRunnable() {
                     @Override
@@ -418,12 +522,14 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                             protectedPlayers.remove(uuid);
                             Player p = Bukkit.getPlayer(uuid);
                             if (p != null) {
-                                p.sendMessage(ChatColor.RED + "⚠ Защита от падения снята! Удачи!");
-                                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
+                                p.sendMessage(getMessage("protection-removed"));
+                                if (soundsEnabled) {
+                                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
+                                }
                             }
                         }
                     }
-                }.runTaskLater(this, 400L); // 400 ticks = 20 seconds
+                }.runTaskLater(SpeedrunPlugin.this, (long) fallProtectionDuration * 20L);
             }
         }
     }
@@ -437,7 +543,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         Player player = event.getEntity();
         activePlayers.remove(player.getUniqueId());
 
-        broadcastMessage(ChatColor.RED + "☠ " + player.getName() + " погиб! Осталось игроков: " + activePlayers.size());
+        broadcastMessage(getMessage("player-died", "player", player.getName(), "count", activePlayers.size()));
 
         checkLastManStanding();
     }
@@ -452,8 +558,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         if (activePlayers.contains(player.getUniqueId())) {
             activePlayers.remove(player.getUniqueId());
 
-            broadcastMessage(ChatColor.YELLOW + "⚠ " + player.getName() + " вышел из игры! Осталось игроков: "
-                    + activePlayers.size());
+            broadcastMessage(getMessage("player-left", "player", player.getName(), "count", activePlayers.size()));
 
             checkLastManStanding();
         }
@@ -462,6 +567,10 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     // Check if only one player remains and declare them winner
     private void checkLastManStanding() {
         if (!gameActive || !gameStarted)
+            return;
+
+        // Easy mode - don't give victory to last survivor
+        if (easyMode)
             return;
 
         // Only trigger last-man-standing if game started with more than 1 player
@@ -473,13 +582,13 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             Player winner = Bukkit.getPlayer(winnerUUID);
 
             if (winner != null && winner.isOnline()) {
-                broadcastMessage(ChatColor.GOLD + "🏆 " + winner.getName() + " — последний выживший!");
+                broadcastMessage(getMessage("last-survivor", "player", winner.getName()));
                 playerWins(winner);
             }
         } else if (activePlayers.isEmpty()) {
             // Everyone died/left
             stopGame();
-            broadcastMessage(ChatColor.RED + "Все игроки погибли! Игра окончена без победителя.");
+            broadcastMessage(getMessage("all-died"));
         }
     }
 
@@ -502,34 +611,35 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         protectedPlayers.clear();
 
         // Spawn fireworks at winner's location
-        spawnFireworks(winner.getLocation(), 10);
+        if (fireworksEnabled) {
+            spawnFireworks(winner.getLocation(), fireworksCount);
+        }
 
         // Play victory sound
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            if (soundsEnabled) {
+                player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            }
 
             // Update tab with final time
-            String header = ChatColor.GOLD + "═══ " + ChatColor.GREEN + "ПОБЕДА!" + ChatColor.GOLD + " ═══";
-            String footer = ChatColor.WHITE + "Победитель: " + ChatColor.AQUA + winner.getName() + "\n" +
-                    ChatColor.GREEN + "Время: " + ChatColor.WHITE + finalTime;
+            String header = getMessage("tab-victory-header");
+            String footer = getMessage("tab-victory-footer", "player", winner.getName(), "time", finalTime);
             player.setPlayerListHeaderFooter(header, footer);
         }
 
         // Announce winner
         broadcastMessage("");
-        broadcastMessage(ChatColor.GOLD + "╔════════════════════════════════════╗");
-        broadcastMessage(
-                ChatColor.GOLD + "║" + ChatColor.GREEN + "      🏆 ПОБЕДИТЕЛЬ! 🏆" + ChatColor.GOLD + "            ║");
-        broadcastMessage(ChatColor.GOLD + "╠════════════════════════════════════╣");
-        broadcastMessage(ChatColor.GOLD + "║ " + ChatColor.WHITE + "Игрок: " + ChatColor.AQUA + winner.getName());
-        broadcastMessage(
-                ChatColor.GOLD + "║ " + ChatColor.WHITE + "Предмет: " + ChatColor.YELLOW + formatItemName(targetItem));
-        broadcastMessage(ChatColor.GOLD + "║ " + ChatColor.WHITE + "Время: " + ChatColor.GREEN + finalTime);
-        broadcastMessage(ChatColor.GOLD + "╚════════════════════════════════════╝");
+        broadcastMessage(getMessage("victory-header"));
+        broadcastMessage(getMessage("victory-title"));
+        broadcastMessage(getMessage("victory-separator"));
+        broadcastMessage(getMessage("victory-player", "player", winner.getName()));
+        broadcastMessage(getMessage("victory-item", "item", formatItemName(targetItem)));
+        broadcastMessage(getMessage("victory-time", "time", finalTime));
+        broadcastMessage(getMessage("victory-footer"));
         broadcastMessage("");
 
-        broadcastTitle(ChatColor.GOLD + "🏆 " + winner.getName() + " 🏆",
-                ChatColor.GREEN + "Время: " + finalTime, 10, 100, 20);
+        broadcastTitle(getMessage("victory-broadcast-title", "player", winner.getName()),
+                getMessage("victory-broadcast-subtitle", "time", finalTime), 10, 100, 20);
     }
 
     private void spawnFireworks(Location location, int count) {
@@ -599,13 +709,12 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // Format for Action Bar (includes milliseconds)
+    // Format time (minutes and seconds only)
     private String formatTime(long millis) {
         long seconds = millis / 1000;
         long minutes = seconds / 60;
         seconds = seconds % 60;
-        long ms = (millis % 1000) / 10;
-        return String.format("%02d:%02d.%02d", minutes, seconds, ms);
+        return String.format("%02d:%02d", minutes, seconds);
     }
 
     // Format for Tab List (Seconds only)

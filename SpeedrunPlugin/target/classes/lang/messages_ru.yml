@@ -1,0 +1,61 @@
+# Russian Localization / Русская локализация
+# SpeedrunPlugin
+
+# General messages
+prefix: "&6[Спидран] "
+only-player: "&cЭту команду может выполнить только игрок!"
+game-already-running: "&cИгра уже запущена! Используйте /speedrunstop чтобы остановить."
+game-not-running: "&cИгра не запущена."
+game-stopped-admin: "&e⚠ Спидран остановлен администратором!"
+
+# Command usage
+usage: "&cИспользование: /speedrun <item_id> или /speedrun random"
+usage-example: "&7Пример: /speedrun minecraft:diamond"
+usage-random: "&7Или: /speedrun random — случайный предмет"
+unknown-item: "&cНеизвестный предмет: %item%"
+check-item-id: "&7Убедитесь, что ID правильный (например: minecraft:diamond)"
+
+# Random mode
+random-item-selected: "&a✓ Выбран случайный предмет: &b%item%"
+
+# Game start
+game-title: "&6СПИДРАН"
+game-subtitle: "&eЦель: %item%"
+game-start-message: "&a═══════════════════════════════════"
+game-announcement: "&6🎯 СПИДРАН НАЧИНАЕТСЯ!"
+game-target: "&fЦель: &b%item%"
+
+# Countdown
+countdown-message: "&eСтарт через %seconds% секунд..."
+start-title: "&aСТАРТ!"
+start-subtitle: "&bНайдите: %item%"
+
+# Teleport
+teleport-message: "&a✓ Вы телепортированы в случайную точку: X=%x% Z=%z%"
+
+# Fall protection
+landed-message: "&e⚠ Вы приземлились! Защита от падения спадет через %seconds% секунд."
+protection-removed: "&c⚠ Защита от падения снята! Удачи!"
+
+# Player death/quit
+player-died: "&c☠ %player% погиб! Осталось игроков: %count%"
+player-left: "&e⚠ %player% вышел из игры! Осталось игроков: %count%"
+all-died: "&cВсе игроки погибли! Игра окончена без победителя."
+last-survivor: "&6🏆 %player% — последний выживший!"
+
+# Victory
+victory-header: "&6╔═════════════════════════════════╗"
+victory-title: "&6║&a      🏆 ПОБЕДИТЕЛЬ! 🏆            "
+victory-separator: "&6╠═════════════════════════════════╣"
+victory-player: "&6║ &fИгрок: &b%player%"
+victory-item: "&6║ &fПредмет: &e%item%"
+victory-time: "&6║ &fВремя: &a%time%"
+victory-footer: "&6╚═════════════════════════════════╝"
+victory-broadcast-title: "&6🏆 %player% 🏆"
+victory-broadcast-subtitle: "&aВремя: %time%"
+
+# Tab list
+tab-header: "&6═══ &fСПИДРАН &6═══\n&eЦель: &b%item%"
+tab-footer: "&a⏱ Время: &f%time%\n&7Игроков: %count%"
+tab-victory-header: "&6═══ &aПОБЕДА! &6═══"
+tab-victory-footer: "&fПобедитель: &b%player%\n&aВремя: &f%time%"

@@ -1,0 +1,61 @@
+# English Localization
+# SpeedrunPlugin
+
+# General messages
+prefix: "&6[Speedrun] "
+only-player: "&cThis command can only be executed by a player!"
+game-already-running: "&cGame is already running! Use /speedrunstop to stop."
+game-not-running: "&cGame is not running."
+game-stopped-admin: "&e⚠ Speedrun stopped by administrator!"
+
+# Command usage
+usage: "&cUsage: /speedrun <item_id> or /speedrun random"
+usage-example: "&7Example: /speedrun minecraft:diamond"
+usage-random: "&7Or: /speedrun random — random item"
+unknown-item: "&cUnknown item: %item%"
+check-item-id: "&7Make sure the ID is correct (e.g.: minecraft:diamond)"
+
+# Random mode
+random-item-selected: "&a✓ Random item selected: &b%item%"
+
+# Game start
+game-title: "&6SPEEDRUN"
+game-subtitle: "&eTarget: %item%"
+game-start-message: "&a═══════════════════════════════════"
+game-announcement: "&6🎯 SPEEDRUN STARTING!"
+game-target: "&fTarget: &b%item%"
+
+# Countdown
+countdown-message: "&eStarting in %seconds% seconds..."
+start-title: "&aSTART!"
+start-subtitle: "&bFind: %item%"
+
+# Teleport
+teleport-message: "&a✓ You have been teleported to a random location: X=%x% Z=%z%"
+
+# Fall protection
+landed-message: "&e⚠ You have landed! Fall protection will expire in %seconds% seconds."
+protection-removed: "&c⚠ Fall protection removed! Good luck!"
+
+# Player death/quit
+player-died: "&c☠ %player% died! Players remaining: %count%"
+player-left: "&e⚠ %player% left the game! Players remaining: %count%"
+all-died: "&cAll players died! Game over with no winner."
+last-survivor: "&6🏆 %player% — last one standing!"
+
+# Victory
+victory-header: "&6╔═════════════════════════════════╗"
+victory-title: "&6║&a      🏆 WINNER! 🏆            "
+victory-separator: "&6╠═════════════════════════════════╣"
+victory-player: "&6║ &fPlayer: &b%player%"
+victory-item: "&6║ &fItem: &e%item%"
+victory-time: "&6║ &fTime: &a%time%"
+victory-footer: "&6╚═════════════════════════════════╝"
+victory-broadcast-title: "&6🏆 %player% 🏆"
+victory-broadcast-subtitle: "&aTime: %time%"
+
+# Tab list
+tab-header: "&6═══ &fSPEEDRUN &6═══\n&eTarget: &b%item%"
+tab-footer: "&a⏱ Time: &f%time%\n&7Players: %count%"
+tab-victory-header: "&6═══ &aVICTORY! &6═══"
+tab-victory-footer: "&fWinner: &b%player%\n&aTime: &f%time%"

@@ -1,0 +1,48 @@
+# SpeedrunPlugin Configuration
+# Конфигурация плагина SpeedrunPlugin
+
+# Language / Язык (ru, en)
+language: ru
+
+# Game settings / Настройки игры
+game:
+  # Countdown before game starts (seconds) / Отсчёт перед началом игры (секунды)
+  countdown: 20
+  
+  # Easy mode - disable last-man-standing win condition / 
+  # Лёгкий режим - отключить победу последнего выжившего
+  # When enabled, players must find the item to win, dying doesn't give victory to others
+  easy-mode: false
+  
+  # Platform height in the sky / Высота платформ в небе
+  platform-height: 200
+  
+  # Fall protection duration after landing (seconds) / Длительность защиты после приземления (секунды)
+  fall-protection-duration: 20
+  
+  # Spawn distance range (blocks) / Дальность спавна (блоки)
+  spawn-range: 5000
+
+# Fireworks settings / Настройки фейерверков
+fireworks:
+  # Enable fireworks on win / Включить фейерверки при победе
+  enabled: true
+  
+  # Number of fireworks / Количество фейерверков
+  count: 10
+
+# World settings / Настройки мира
+world:
+  # Set time to morning on game start / Установить утро при начале игры
+  set-morning: true
+  
+  # Avoid ocean biomes for spawn / Избегать океанов при спавне
+  avoid-oceans: true
+  
+  # Avoid water blocks for spawn / Избегать воды при спавне
+  avoid-water: true
+
+# Sound settings / Настройки звуков
+sounds:
+  # Enable sounds / Включить звуки
+  enabled: true
