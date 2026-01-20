@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор Спидрана Minecraft 1.21 (GIGA)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'VT323', monospace;
+            background-image: url('https://assets.codepen.io/13471/dirt-bg.jpg');
+            background-size: 128px;
+            image-rendering: pixelated;
+        }
+
+        .mc-btn {
+            background-color: #7d7d7d;
+            border: 4px solid #000;
+            border-top-color: #a0a0a0;
+            border-left-color: #a0a0a0;
+            border-right-color: #3f3f3f;
+            border-bottom-color: #3f3f3f;
+            color: #fff;
+            text-shadow: 2px 2px #000;
+            transition: all 0.1s;
+        }
+
+        .mc-btn:active {
+            border-top-color: #3f3f3f;
+            border-left-color: #3f3f3f;
+            border-right-color: #a0a0a0;
+            border-bottom-color: #a0a0a0;
+            transform: translateY(2px);
+        }
+
+        .mc-panel {
+            background-color: #c6c6c6;
+            border: 4px solid #000;
+            border-top-color: #fff;
+            border-left-color: #fff;
+            border-right-color: #555;
+            border-bottom-color: #555;
+            box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
+        }
+
+        .mc-slot {
+            background-color: #8b8b8b;
+            border: 3px solid #373737;
+            border-bottom-color: #fff;
+            border-right-color: #fff;
+            box-shadow: inset 2px 2px 0 #000;
+        }
+
+        .timer-screen {
+            background-color: #212121;
+            border: 3px solid #5d5d5d;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+            box-shadow: inset 2px 2px 0 #000;
+            color: #e25858;
+            /* Redstone red */
+        }
+
+        .pixel-text {
+            text-shadow: 2px 2px 0 #3f3f3f;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Scrollbar for modal */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #212121;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #7d7d7d;
+            border: 2px solid #3f3f3f;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+
+        /* Animation classes */
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .pop-in {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modifier-box {
+            background-color: #1a1a1a;
+            border: 2px solid #fff;
+            color: #ffff55;
+            /* Minecraft Yellow */
+            text-shadow: 2px 2px 0 #000;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="mc-panel w-full max-w-md p-6 flex flex-col items-center relative z-10">
+        <!-- Header -->
+        <h1 class="text-4xl text-center mb-6 text-gray-800" style="text-shadow: 2px 2px 0 #fff;">
+            РАНДОМАЙЗЕР 1.21
+        </h1>
+
+        <!-- Display Area -->
+        <div class="mc-slot w-48 h-48 flex items-center justify-center mb-6 bg-gray-600 relative overflow-hidden group">
+            <img id="block-image" src="https://api.mineatar.io/cube/grass_block" alt="Item Preview"
+                class="w-32 h-32 object-contain image-rendering-pixelated transition-transform duration-200"
+                style="image-rendering: pixelated;">
+            <div id="loader"
+                class="hidden absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-2xl">
+                ...
+            </div>
+        </div>
+
+        <!-- Info Area -->
+        <div class="w-full text-center mb-6 space-y-2">
+            <h2 id="block-name"
+                class="text-3xl font-bold text-gray-800 drop-shadow-md leading-none min-h-[3rem] flex items-center justify-center">
+                Трава</h2>
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+                <code id="block-id"
+                    class="bg-black text-white px-3 py-1 text-lg rounded border-2 border-gray-500 max-w-[280px] break-all">minecraft:grass_block</code>
+                <button onclick="copyId()" class="mc-btn px-2 py-1 text-sm flex-shrink-0" title="Скопировать ID">
+                    📋
+                </button>
+            </div>
+            <div id="item-type" class="text-gray-600 text-sm font-bold uppercase tracking-widest">БЛОК</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="w-full flex gap-2 mb-2">
+            <button id="roll-btn" onclick="startRoulette('all')"
+                class="mc-btn flex-1 py-3 text-2xl hover:bg-gray-400 leading-tight">
+                ХАРДКОР<br><span class="text-sm">ВСЕ ПРЕДМЕТЫ</span>
+            </button>
+            <button id="roll-fast-btn" onclick="startRoulette('fast')"
+                class="mc-btn flex-1 py-3 text-2xl hover:bg-gray-400 leading-tight">
+                БЫСТРАЯ<br><span class="text-sm">ДО 10 МИН</span>
+            </button>
+        </div>
+
+        <button onclick="toggleModal()" class="mc-btn w-full py-2 text-xl mb-4 hover:bg-gray-400">
+            СПИСОК ПРЕДМЕТОВ
+        </button>
+
+        <!-- Timer Section -->
+        <div class="w-full mb-4 flex flex-col items-center gap-2">
+            <div class="timer-screen w-full py-2 px-4 text-center overflow-hidden">
+                <span id="timer-display"
+                    class="text-5xl font-mono tracking-widest drop-shadow-md whitespace-nowrap">00:00:00</span>
+            </div>
+            <div class="flex w-full gap-2">
+                <button id="timer-toggle-btn" onclick="toggleTimer()"
+                    class="mc-btn flex-1 py-2 text-xl hover:bg-gray-400">СТАРТ</button>
+                <button onclick="resetTimer()" class="mc-btn flex-1 py-2 text-xl hover:bg-gray-400">СБРОС</button>
+            </div>
+        </div>
+
+        <!-- Modifier Section -->
+        <div class="w-full mb-2 p-2 border-2 border-gray-500 bg-[#909090] shadow-inner">
+            <div class="text-center text-gray-800 font-bold mb-1">МОДИФИКАТОР СЛОЖНОСТИ</div>
+            <div id="modifier-display"
+                class="modifier-box w-full p-2 text-center text-xl mb-2 min-h-[3.5rem] flex items-center justify-center leading-tight">
+                Нет условия
+            </div>
+            <button onclick="rollModifier()" class="mc-btn w-full py-1 text-lg hover:bg-gray-400">
+                🎲 ДОБАВИТЬ ЧЕЛЛЕНДЖ
+            </button>
+        </div>
+
+        <div id="pool-count" class="text-xs text-gray-500 mb-2">Загружено предметов: 0</div>
+
+        <div class="text-center text-gray-600 text-lg">
+            Версия базы: <span class="text-green-700 font-bold">1.21 (GIGA)</span>
+        </div>
+    </div>
+
+    <!-- Modal for List -->
+    <div id="list-modal" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4">
+        <div class="mc-panel w-full max-w-4xl h-[80vh] flex flex-col relative">
+            <div class="flex justify-between items-center mb-4 border-b-2 border-gray-600 pb-2">
+                <h2 class="text-3xl text-gray-800" style="text-shadow: 2px 2px 0 #fff;">СПИСОК ПРЕДМЕТОВ</h2>
+                <button onclick="toggleModal()" class="mc-btn px-4 py-1 text-xl bg-red-600 hover:bg-red-500">X</button>
+            </div>
+
+            <div class="flex gap-4 mb-4 items-center bg-gray-600 p-2 border-2 border-gray-800">
+                <label class="flex items-center gap-2 text-white text-xl cursor-pointer select-none">
+                    <input type="checkbox" id="filter-fast" onchange="renderList()"
+                        class="w-6 h-6 rounded border-2 border-gray-800 text-green-600 focus:ring-0">
+                    Только "Быстрая игра"
+                </label>
+                <input type="text" id="search-input" onkeyup="renderList()" placeholder="Поиск..."
+                    class="ml-auto px-2 py-1 bg-gray-800 text-white border-2 border-gray-500 font-mono text-lg w-48">
+            </div>
+
+            <div id="modal-grid"
+                class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2 bg-gray-800 border-inner shadow-inner">
+                <!-- Items will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow-lg border-2 border-green-800 hidden z-50">
+        ID скопирован!
+    </div>
+
+    <script>
+        // --- MODIFIERS LIST ---
+        const modifiers = [
+            "Без брони",
+            "Без прыжков",
+            "Только вид от 3-го лица (F5)",
+            "Без использования сундуков",
+            "Нельзя получать урон от падения",
+            "Пацифист (никого не убивать)",
+            "Без использования ведра воды",
+            "FOV: 30 (Максимальное приближение)",
+            "FOV: Quake Pro",
+            "Без бега",
+            "Только кожаная броня",
+            "Пол — это лава",
+            "Режим крота (не выходи на поверхность)",
+            "Ночной житель (выходи только ночью)",
+            "Без использования щита",
+            "Вегетарианец",
+            "Карнивор",
+            "Без крафта инструментов",
+            "Слепота (Яркость: Mood)",
+            "Без звука",
+            "Инверсия мыши",
+            "Только 5 слотов хотбара",
+            "Без использования верстака",
+            "Нельзя использовать кровать",
+            "Предмет во второй руке всегда",
+            "Нельзя плавать",
+            "Только золотые инструменты",
+            "Нельзя использовать факелы",
+            "Cinematic Camera (F8)",
+            "Без регенерации",
+            "Нельзя ломать землю/дерн",
+            "Нельзя ломать дерево",
+            "Только деревянные инструменты",
+            "Инвентарь: 1 ряд",
+            "Нельзя открывать инвентарь",
+            "Чувствительность мыши: Max",
+            "Чувствительность мыши: Min",
+            "Без интерфейса (F1)",
+            "Монохром",
+            "Нельзя использовать печь"
+        ];
+
+        // --- DATABASE GENERATOR ---
+
+        // MISSING ARRAY DEFINED HERE
+        const effects = [
+            { id: "regeneration", name: "Регенерации" },
+            { id: "swiftness", name: "Скорости" },
+            { id: "fire_resistance", name: "Огнестойкости" },
+            { id: "healing", name: "Лечения" },
+            { id: "night_vision", name: "Ночного зрения" },
+            { id: "strength", name: "Силы" },
+            { id: "leaping", name: "Прыгучести" },
+            { id: "invisibility", name: "Невидимости" },
+            { id: "poison", name: "Отравления" },
+            { id: "weakness", name: "Слабости" },
+            { id: "slowness", name: "Замедления" },
+            { id: "harming", name: "Урона" },
+            { id: "water_breathing", name: "Подводного дыхания" },
+            { id: "slow_falling", name: "Плавного падения" }
+        ];
+
+        let pool = [];
+        let quickPool = [];
+
+        // 1. Basic Generators (Colors)
+        const colors = [
+            { id: "white", root: "Бел", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "orange", root: "Оранжев", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "magenta", root: "Сиренев", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "light_blue", root: "Голуб", endM: "ой", endF: "ая", endN: "ое" },
+            { id: "yellow", root: "Желт", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "lime", root: "Лаймов", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "pink", root: "Розов", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "gray", root: "Сер", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "light_gray", root: "Светло-сер", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "cyan", root: "Бирюзов", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "purple", root: "Фиолетов", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "blue", root: "Син", endM: "ий", endF: "яя", endN: "ее" },
+            { id: "brown", root: "Коричнев", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "green", root: "Зелен", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "red", root: "Красн", endM: "ый", endF: "ая", endN: "ое" },
+            { id: "black", root: "Черн", endM: "ый", endF: "ая", endN: "ое" }
+        ];
+
+        colors.forEach(c => {
+            const items = [
+                { id: `${c.id}_wool`, name: `${c.root}${c.endF} шерсть`, type: "block", fast: true },
+                { id: `${c.id}_carpet`, name: `${c.root}${c.endM} ковер`, type: "block", fast: true },
+                { id: `${c.id}_concrete`, name: `${c.root}${c.endM} бетон`, type: "block", fast: false },
+                { id: `${c.id}_concrete_powder`, name: `${c.root}${c.endM} сухой бетон`, type: "block", fast: false },
+                { id: `${c.id}_stained_glass`, name: `${c.root}${c.endN} стекло`, type: "block", fast: false },
+                { id: `${c.id}_stained_glass_pane`, name: `${c.root}${c.endF} стеклянная панель`, type: "block", fast: false },
+                { id: `${c.id}_bed`, name: `${c.root}${c.endF} кровать`, type: "item", fast: true },
+                { id: `${c.id}_shulker_box`, name: `${c.root}${c.endM} шалкеровый ящик`, type: "block", fast: false },
+                { id: `${c.id}_banner`, name: `${c.root}${c.endM} флаг`, type: "item", fast: true },
+                { id: `${c.id}_candle`, name: `${c.root}${c.endF} свеча`, type: "block", fast: false },
+                { id: `${c.id}_terracotta`, name: `${c.root}${c.endF} терракота`, type: "block", fast: false },
+                { id: `${c.id}_glazed_terracotta`, name: `${c.root}${c.endF} глазур. керамика`, type: "block", fast: false },
+                { id: `${c.id}_dye`, name: `${c.root}${c.endM} краситель`, type: "item", fast: true }
+            ];
+            items.forEach(i => { pool.push(i); if (i.fast) quickPool.push(i); });
+        });
+
+        const woods = [
+            { id: "oak", name: "Дуб", root: "Дубов" },
+            { id: "spruce", name: "Ель", root: "Елов" },
+            { id: "birch", name: "Береза", root: "Березов" },
+            { id: "jungle", name: "Тропич", root: "Тропическ" },
+            { id: "acacia", name: "Акация", root: "Акациев" },
+            { id: "dark_oak", name: "Темн. дуб", root: "Темно-дубов" },
+            { id: "mangrove", name: "Мангр", root: "Мангров" },
+            { id: "cherry", name: "Вишня", root: "Вишнев" },
+            { id: "crimson", name: "Багров", root: "Багров", isNether: true },
+            { id: "warped", name: "Искаж", root: "Искаженн", isNether: true }
+        ];
+
+        woods.forEach(w => {
+            const isNether = w.isNether;
+            const logName = isNether ? "стебель" : "бревно";
+            const logId = isNether ? `${w.id}_stem` : `${w.id}_log`;
+            const woodName = isNether ? "гифы" : "древесина";
+            const woodId = isNether ? `${w.id}_hyphae` : `${w.id}_wood`;
+
+            const adj = w.root + (w.id === 'jungle' ? 'ий' : 'ый');
+            const adjP = w.root + (w.id === 'jungle' ? 'ие' : 'ые');
+            const adjF = w.root + (w.id === 'jungle' ? 'ая' : 'ая');
+
+            const items = [
+                { id: logId, name: `${adj} ${logName}`, type: "block" },
+                { id: `stripped_${logId}`, name: `Обтес. ${logName} (${w.name})`, type: "block" },
+                { id: woodId, name: `${adjF} ${woodName}`, type: "block" },
+                { id: `stripped_${woodId}`, name: `Обтес. ${woodName} (${w.name})`, type: "block" },
+                { id: `${w.id}_planks`, name: `${adjP} доски`, type: "block" },
+                { id: `${w.id}_stairs`, name: `${adjP} ступеньки`, type: "block" },
+                { id: `${w.id}_slab`, name: `${adjF} плита`, type: "block" },
+                { id: `${w.id}_fence`, name: `${adj} забор`, type: "block" },
+                { id: `${w.id}_fence_gate`, name: `${adjF} калитка`, type: "block" },
+                { id: `${w.id}_door`, name: `${adjF} дверь`, type: "item" },
+                { id: `${w.id}_trapdoor`, name: `${adj} люк`, type: "block" },
+                { id: `${w.id}_pressure_plate`, name: `${adjF} нажимная плита`, type: "block" },
+                { id: `${w.id}_button`, name: `${adj} кнопка`, type: "block" },
+                { id: `${w.id}_sign`, name: `${adjF} табличка`, type: "item" },
+                { id: `${w.id}_hanging_sign`, name: `${adjF} подвесная табличка`, type: "item" }
+            ];
+
+            if (!isNether || ['crimson', 'warped'].includes(w.id)) {
+                items.push({ id: `${w.id}_boat`, name: `${adjF} лодка`, type: "item" });
+                items.push({ id: `${w.id}_chest_boat`, name: `${adjF} лодка с сундуком`, type: "item" });
+            }
+            if (isNether) {
+                items.push({ id: `${w.id}_fungus`, name: `${adj} гриб`, type: "block" });
+                items.push({ id: `${w.id}_roots`, name: `${adjP} корни`, type: "block" });
+            } else {
+                items.push({ id: `${w.id}_sapling`, name: `${adj} саженец`, type: "block" });
+                items.push({ id: `${w.id}_leaves`, name: `${adjP} листья`, type: "block" });
+            }
+
+            items.forEach(i => { pool.push(i); if (!isNether) quickPool.push(i); });
+        });
+
+        // 3. Copper Expansion
+        const copperTypes = ["", "exposed_", "weathered_", "oxidized_"];
+        const copperNames = ["Медн", "Потемневш. медн", "Состаренн. медн", "Окисленн. медн"];
+
+        copperTypes.forEach((prefix, idx) => {
+            const name = copperNames[idx];
+            const items = [
+                { id: `${prefix}copper`, name: `${name}ый блок`, type: "block" },
+                { id: `${prefix}cut_copper`, name: `${name}ый резной блок`, type: "block" },
+                { id: `${prefix}cut_copper_stairs`, name: `${name}ые ступеньки`, type: "block" },
+                { id: `${prefix}cut_copper_slab`, name: `${name}ая плита`, type: "block" },
+                // Waxed variants
+                { id: `waxed_${prefix}copper`, name: `Вощ. ${name}ый блок`, type: "block" },
+                { id: `waxed_${prefix}cut_copper`, name: `Вощ. ${name}ый резной блок`, type: "block" },
+                { id: `waxed_${prefix}cut_copper_stairs`, name: `Вощ. ${name}ые ступеньки`, type: "block" },
+                { id: `waxed_${prefix}cut_copper_slab`, name: `Вощ. ${name}ая плита`, type: "block" }
+            ];
+            items.forEach(i => { pool.push(i); if (prefix === "" && !i.id.includes("waxed")) quickPool.push(i); });
+        });
+
+        // 4. Stones & Deepslate (Expanded)
+        const stones = [
+            { id: "cobblestone", name: "Булыжник" },
+            { id: "mossy_cobblestone", name: "Мшистый булыжник" },
+            { id: "stone", name: "Камень" },
+            { id: "smooth_stone", name: "Гладкий камень" },
+            { id: "stone_bricks", name: "Каменные кирпичи" },
+            { id: "mossy_stone_bricks", name: "Мшистые кам. кирпичи" },
+            { id: "cracked_stone_bricks", name: "Потреск. кам. кирпичи" },
+            { id: "chiseled_stone_bricks", name: "Резные кам. кирпичи" },
+            { id: "granite", name: "Гранит" },
+            { id: "polished_granite", name: "Полированный гранит" },
+            { id: "diorite", name: "Диорит" },
+            { id: "polished_diorite", name: "Полированный диорит" },
+            { id: "andesite", name: "Андезит" },
+            { id: "polished_andesite", name: "Полированный андезит" },
+            { id: "deepslate", name: "Глубинный сланец" },
+            { id: "cobbled_deepslate", name: "Дробленый сланец" },
+            { id: "polished_deepslate", name: "Полированный сланец" },
+            { id: "deepslate_bricks", name: "Сланцевые кирпичи" },
+            { id: "cracked_deepslate_bricks", name: "Потреск. сланцевые кирпичи" },
+            { id: "deepslate_tiles", name: "Сланцевая плитка" },
+            { id: "cracked_deepslate_tiles", name: "Потреск. сланцевая плитка" },
+            { id: "chiseled_deepslate", name: "Резной сланец" },
+            { id: "reinforced_deepslate", name: "Укрепленный сланец" },
+            { id: "blackstone", name: "Чернит" },
+            { id: "polished_blackstone", name: "Полированный чернит" },
+            { id: "polished_blackstone_bricks", name: "Полир. чернит. кирпичи" },
+            { id: "cracked_polished_blackstone_bricks", name: "Потреск. полир. чернит. кирпичи" },
+            { id: "chiseled_polished_blackstone", name: "Резной полир. чернит" },
+            { id: "gilded_blackstone", name: "Золоченый чернит" },
+            { id: "end_stone_bricks", name: "Эндерняковые кирпичи" },
+            { id: "purpur_block", name: "Пурпурный блок" },
+            { id: "purpur_pillar", name: "Пурпурный пилон" },
+            { id: "prismarine", name: "Призмарин" },
+            { id: "prismarine_bricks", name: "Призмариновые кирпичи" },
+            { id: "dark_prismarine", name: "Темный призмарин" },
+            { id: "sandstone", name: "Песчаник" },
+            { id: "chiseled_sandstone", name: "Резной песчаник" },
+            { id: "cut_sandstone", name: "Гладкий песчаник" },
+            { id: "red_sandstone", name: "Красный песчаник" },
+            { id: "chiseled_red_sandstone", name: "Резной кр. песчаник" },
+            { id: "cut_red_sandstone", name: "Гладкий кр. песчаник" },
+            { id: "brick_block", name: "Кирпичный блок" },
+            { id: "mud_bricks", name: "Грязевые кирпичи" },
+            { id: "nether_bricks", name: "Незерские кирпичи" },
+            { id: "cracked_nether_bricks", name: "Потреск. незер. кирпичи" },
+            { id: "chiseled_nether_bricks", name: "Резные незер. кирпичи" },
+            { id: "red_nether_bricks", name: "Красные незер. кирпичи" },
+            { id: "quartz_block", name: "Кварцевый блок" },
+            { id: "chiseled_quartz_block", name: "Резной кварцевый блок" },
+            { id: "quartz_pillar", name: "Кварцевая колонна" },
+            { id: "smooth_quartz", name: "Гладкий кварц" }
+        ];
+
+        stones.forEach(s => {
+            pool.push({ id: s.id, name: s.name, type: "block", fast: true });
+            if (!s.id.includes('reinforced') && !s.id.includes('gilded') && !s.id.includes('pillar') && !s.id.includes('chiseled') && !s.id.includes('cracked')) {
+                pool.push({ id: `${s.id}_slab`, name: `${s.name} (Плита)`, type: "block", fast: true });
+                pool.push({ id: `${s.id}_stairs`, name: `${s.name} (Ступени)`, type: "block", fast: true });
+                pool.push({ id: `${s.id}_wall`, name: `${s.name} (Ограда)`, type: "block", fast: true });
+            }
+        });
+
+        // 5. Corals
+        const corals = ["tube", "brain", "bubble", "fire", "horn"];
+        const coralNames = ["Трубчатый", "Мозговой", "Пузырчатый", "Огненный", "Роговой"];
+        corals.forEach((c, i) => {
+            pool.push({ id: `${c}_coral_block`, name: `Блок ${coralNames[i].toLowerCase()} коралла`, type: "block" });
+            pool.push({ id: `${c}_coral`, name: `${coralNames[i]} коралл`, type: "block" });
+            pool.push({ id: `${c}_coral_fan`, name: `${coralNames[i]} веерный коралл`, type: "block" });
+            pool.push({ id: `dead_${c}_coral_block`, name: `Мертвый блок ${coralNames[i].toLowerCase()} коралла`, type: "block" });
+            pool.push({ id: `dead_${c}_coral`, name: `Мертвый ${coralNames[i].toLowerCase()} коралл`, type: "block" });
+            pool.push({ id: `dead_${c}_coral_fan`, name: `Мертвый ${coralNames[i].toLowerCase()} веерный коралл`, type: "block" });
+        });
+
+        // 6. Pottery Sherds
+        const sherds = ["angler", "archer", "arms_up", "blade", "brewer", "burn", "danger", "explorer", "flow", "friend", "guster", "heart", "heartbreak", "howl", "miner", "mourner", "plenty", "prize", "scrap", "sheaf", "shelter", "skull", "snort"];
+        sherds.forEach(s => {
+            pool.push({ id: `${s}_pottery_sherd`, name: `Черепок (${s})`, type: "item", fast: false });
+        });
+
+        // 7. Templates
+        const templates = ["netherite_upgrade", "sentry_armor_trim", "dune_armor_trim", "coast_armor_trim", "wild_armor_trim", "ward_armor_trim", "eye_armor_trim", "vex_armor_trim", "tide_armor_trim", "snout_armor_trim", "rib_armor_trim", "spire_armor_trim", "wayfinder_armor_trim", "raiser_armor_trim", "shaper_armor_trim", "host_armor_trim", "silence_armor_trim"];
+        templates.forEach(t => {
+            pool.push({ id: `${t}_smithing_template`, name: `Шаблон (${t})`, type: "item", fast: false });
+        });
+
+        // 8. Music Discs
+        const discs = ["13", "cat", "blocks", "chirp", "far", "mall", "mellohi", "stal", "strad", "ward", "11", "wait", "otherside", "5", "relic", "precipice", "creator"];
+        discs.forEach(d => {
+            pool.push({ id: `music_disc_${d}`, name: `Пластинка (${d})`, type: "item", fast: false });
+        });
+
+        // 9. Standard Tools/Armor
+        const toolMats = ["wooden", "stone", "iron", "golden", "diamond", "netherite"];
+        const toolTypes = ["sword", "pickaxe", "axe", "shovel", "hoe"];
+        toolMats.forEach(m => {
+            toolTypes.forEach(t => {
+                pool.push({ id: `${m}_${t}`, name: `${m} ${t}`, type: "item", fast: (m !== 'diamond' && m !== 'netherite') });
+            });
+        });
+
+        const armorMats = ["leather", "chainmail", "iron", "golden", "diamond", "netherite"];
+        const armorTypes = ["helmet", "chestplate", "leggings", "boots"];
+        armorMats.forEach(m => {
+            armorTypes.forEach(t => {
+                pool.push({ id: `${m}_${t}`, name: `${m} ${t}`, type: "item", fast: (m === 'leather' || m === 'iron') });
+            });
+        });
+
+        // Horse Armor
+        ["iron", "golden", "diamond", "leather"].forEach(m => {
+            pool.push({ id: `${m}_horse_armor`, name: `Конская броня (${m})`, type: "item", fast: false });
+        });
+
+        // 10. Buckets of Fish/Mobs
+        const buckets = ["axolotl", "cod", "salmon", "pufferfish", "tropical_fish", "tadpole"];
+        buckets.forEach(b => {
+            pool.push({ id: `${b}_bucket`, name: `Ведро с (${b})`, type: "item", fast: true });
+        });
+
+        // 11. Potions and Arrows
+        effects.forEach(eff => {
+            pool.push({ id: "potion", name: `Зелье ${eff.name}`, type: "potion_effect", baseId: "potion" });
+            pool.push({ id: "splash_potion", name: `Взрывное зелье ${eff.name}`, type: "potion_effect", baseId: "splash_potion" });
+            pool.push({ id: "lingering_potion", name: `Оседающее зелье ${eff.name}`, type: "potion_effect", baseId: "lingering_potion" });
+            pool.push({ id: "tipped_arrow", name: `Стрела ${eff.name}`, type: "potion_effect", baseId: "tipped_arrow" });
+        });
+
+        // 12. Manual Misc Items
+        const misc = [
+            { id: "coal_ore", name: "Угольная руда" }, { id: "deepslate_coal_ore", name: "Глубинная угольная руда" },
+            { id: "iron_ore", name: "Железная руда" }, { id: "deepslate_iron_ore", name: "Глубинная железная руда" },
+            { id: "copper_ore", name: "Медная руда" }, { id: "deepslate_copper_ore", name: "Глубинная медная руда" },
+            { id: "gold_ore", name: "Золотая руда" }, { id: "deepslate_gold_ore", name: "Глубинная золотая руда" },
+            { id: "redstone_ore", name: "Редстоун руда" }, { id: "deepslate_redstone_ore", name: "Глубинная редстоун руда" },
+            { id: "emerald_ore", name: "Изумрудная руда" }, { id: "deepslate_emerald_ore", name: "Глубинная изумрудная руда" },
+            { id: "lapis_ore", name: "Лазуритовая руда" }, { id: "deepslate_lapis_ore", name: "Глубинная лазуритовая руда" },
+            { id: "diamond_ore", name: "Алмазная руда" }, { id: "deepslate_diamond_ore", name: "Глубинная алмазная руда" },
+            { id: "nether_gold_ore", name: "Незер-золото" }, { id: "nether_quartz_ore", name: "Кварцевая руда" },
+            { id: "ancient_debris", name: "Древние обломки" },
+            { id: "raw_iron", name: "Сырое железо", type: "item" }, { id: "raw_iron_block", name: "Блок сырого железа" },
+            { id: "raw_copper", name: "Сырая медь", type: "item" }, { id: "raw_copper_block", name: "Блок сырой меди" },
+            { id: "raw_gold", name: "Сырое золото", type: "item" }, { id: "raw_gold_block", name: "Блок сырого золота" },
+
+            // Nature
+            { id: "dirt", name: "Земля" }, { id: "coarse_dirt", name: "Каменистая земля" }, { id: "rooted_dirt", name: "Корнистая земля" },
+            { id: "mud", name: "Грязь" }, { id: "packed_mud", name: "Плотная грязь" }, { id: "clay", name: "Глина" },
+            { id: "grass_block", name: "Дерн" }, { id: "podzol", name: "Подзол" }, { id: "mycelium", name: "Мицелий" },
+            { id: "sand", name: "Песок" }, { id: "red_sand", name: "Красный песок" }, { id: "gravel", name: "Гравий" },
+            { id: "ice", name: "Лёд" }, { id: "blue_ice", name: "Синий лёд" }, { id: "packed_ice", name: "Плотный лёд" },
+            { id: "snow_block", name: "Снежный блок" }, { id: "snow", name: "Снежный покров" },
+            { id: "obsidian", name: "Обсидиан" }, { id: "crying_obsidian", name: "Плачущий обсидиан" },
+            { id: "netherrack", name: "Незерак" }, { id: "soul_sand", name: "Песок душ" }, { id: "soul_soil", name: "Почва душ" },
+            { id: "basalt", name: "Базальт" }, { id: "smooth_basalt", name: "Гладкий базальт" }, { id: "polished_basalt", name: "Полированный базальт" },
+            { id: "end_stone", name: "Эндерняк" }, { id: "chorus_flower", name: "Цветок хоруса" }, { id: "chorus_plant", name: "Хорус" },
+            { id: "cactus", name: "Кактус" }, { id: "bamboo", name: "Бамбук" }, { id: "sugar_cane", name: "Тростник", type: "item" },
+            { id: "pumpkin", name: "Тыква" }, { id: "melon", name: "Арбуз" }, { id: "jack_o_lantern", name: "Светильник Джека" }, { id: "carved_pumpkin", name: "Вырезанная тыква" },
+            { id: "brown_mushroom", name: "Коричневый гриб" }, { id: "red_mushroom", name: "Красный гриб" },
+            { id: "brown_mushroom_block", name: "Блок кор. гриба" }, { id: "red_mushroom_block", name: "Блок кр. гриба" }, { id: "mushroom_stem", name: "Ножка гриба" },
+            { id: "shroomlight", name: "Грибосвет" }, { id: "glowstone", name: "Светокамень" }, { id: "sea_lantern", name: "Морской фонарь" },
+            { id: "magma_block", name: "Магма" }, { id: "hay_block", name: "Сноп сена" },
+            { id: "amethyst_block", name: "Аметистовый блок" }, { id: "budding_amethyst", name: "Цветущий аметист" }, { id: "calcite", name: "Кальцит" }, { id: "tuff", name: "Туф" }, { id: "dripstone_block", name: "Капельник" }, { id: "pointed_dripstone", name: "Сталактит" },
+            { id: "moss_block", name: "Блок мха" }, { id: "moss_carpet", name: "Ковер из мха" }, { id: "hanging_roots", name: "Свисающие корни" },
+            { id: "spore_blossom", name: "Спороцвет" }, { id: "azalea", name: "Азалия" }, { id: "flowering_azalea", name: "Цветущая азалия" }, { id: "azalea_leaves", name: "Листья азалии" }, { id: "flowering_azalea_leaves", name: "Цветущие листья азалии" },
+            { id: "big_dripleaf", name: "Большой бросянка" }, { id: "small_dripleaf", name: "Малый бросянка" }, { id: "glow_lichen", name: "Светящийся лишайник" },
+            { id: "sculk", name: "Скалк" }, { id: "sculk_vein", name: "Скалк-жила" }, { id: "sculk_catalyst", name: "Скалк-катализатор" }, { id: "sculk_shrieker", name: "Скалк-крикун" },
+            { id: "ochre_froglight", name: "Охристый жабосвет" }, { id: "verdant_froglight", name: "Зеленый жабосвет" }, { id: "pearlescent_froglight", name: "Перламутровый жабосвет" },
+            { id: "mangrove_roots", name: "Мангровые корни" }, { id: "muddy_mangrove_roots", name: "Грязные корни" },
+            { id: "vine", name: "Лианы" }, { id: "weeping_vines", name: "Плакучие лианы" }, { id: "twisting_vines", name: "Вьющиеся лианы" },
+            { id: "lily_pad", name: "Кувшинка" }, { id: "sea_pickle", name: "Морской огурец" }, { id: "kelp", name: "Ламинария", type: "item" }, { id: "seagrass", name: "Морская трава" },
+
+            // Functional & Decor
+            { id: "crafting_table", name: "Верстак" }, { id: "furnace", name: "Печь" }, { id: "blast_furnace", name: "Плавильная печь" }, { id: "smoker", name: "Коптильня" },
+            { id: "cartography_table", name: "Стол картографа" }, { id: "fletching_table", name: "Стол лучника" }, { id: "grindstone", name: "Точило" },
+            { id: "smithing_table", name: "Стол кузнеца" }, { id: "stonecutter", name: "Камнерез" }, { id: "loom", name: "Ткацкий станок" },
+            { id: "barrel", name: "Бочка" }, { id: "chest", name: "Сундук" }, { id: "ender_chest", name: "Эндер-сундук" },
+            { id: "shulker_box", name: "Шалкеровый ящик" }, { id: "beacon", name: "Маяк" }, { id: "conduit", name: "Морской источник" },
+            { id: "respawn_anchor", name: "Якорь возрождения" }, { id: "lodestone", name: "Магнетит" },
+            { id: "bee_nest", name: "Пчелиное гнездо" }, { id: "beehive", name: "Улей" }, { id: "honey_block", name: "Блок мёда" }, { id: "honeycomb_block", name: "Блок сот" },
+            { id: "scaffolding", name: "Подмостки" }, { id: "ladder", name: "Лестница" }, { id: "chain", name: "Цепь", type: "item" }, { id: "iron_bars", name: "Железные прутья" },
+            { id: "anvil", name: "Наковальня" }, { id: "chipped_anvil", name: "Поврежд. наковальня" }, { id: "damaged_anvil", name: "Разбитая наковальня" },
+            { id: "enchanting_table", name: "Чародейский стол" }, { id: "bookshelf", name: "Книжная полка" }, { id: "chiseled_bookshelf", name: "Резная кн. полка" },
+            { id: "brewing_stand", name: "Варочная стойка", type: "item" }, { id: "cauldron", name: "Котел", type: "item" }, { id: "bell", name: "Колокол" }, { id: "composter", name: "Компостер" },
+            { id: "lantern", name: "Фонарь" }, { id: "soul_lantern", name: "Фонарь душ" }, { id: "campfire", name: "Костер" }, { id: "soul_campfire", name: "Костер душ" },
+            { id: "end_rod", name: "Стержень Энда" }, { id: "flower_pot", name: "Цветочный горшок" }, { id: "armor_stand", name: "Стойка для брони", type: "item" },
+            { id: "painting", name: "Картина", type: "item" }, { id: "item_frame", name: "Рамка", type: "item" }, { id: "glow_item_frame", name: "Светящаяся рамка", type: "item" },
+            { id: "skeleton_skull", name: "Череп скелета" }, { id: "wither_skeleton_skull", name: "Череп визер-скелета" }, { id: "zombie_head", name: "Голова зомби" }, { id: "creeper_head", name: "Голова крипера" }, { id: "dragon_head", name: "Голова дракона" }, { id: "piglin_head", name: "Голова пиглина" },
+
+            // Food
+            { id: "apple", name: "Яблоко", type: "item", fast: true },
+            { id: "mushroom_stew", name: "Тушеные грибы", type: "item", fast: true },
+            { id: "bread", name: "Хлеб", type: "item", fast: true },
+            { id: "porkchop", name: "Свинина", type: "item", fast: true },
+            { id: "cooked_porkchop", name: "Жареная свинина", type: "item", fast: true },
+            { id: "golden_carrot", name: "Золотая морковь", type: "item", fast: false },
+            { id: "cake", name: "Торт", type: "block", fast: false },
+            { id: "cookie", name: "Печенье", type: "item", fast: true },
+            { id: "melon_slice", name: "Ломтик арбуза", type: "item", fast: true },
+            { id: "dried_kelp", name: "Сушеная ламинария", type: "item", fast: true },
+            { id: "beef", name: "Говядина", type: "item", fast: true },
+            { id: "cooked_beef", name: "Стейк", type: "item", fast: true },
+            { id: "chicken", name: "Курятина", type: "item", fast: true },
+            { id: "cooked_chicken", name: "Жареная курятина", type: "item", fast: true },
+            { id: "rotten_flesh", name: "Гнилая плоть", type: "item", fast: true },
+            { id: "spider_eye", name: "Паучий глаз", type: "item", fast: true },
+            { id: "carrot", name: "Морковь", type: "item", fast: true },
+            { id: "potato", name: "Картофель", type: "item", fast: true },
+            { id: "baked_potato", name: "Печеный картофель", type: "item", fast: true },
+            { id: "poisonous_potato", name: "Ядовитый картофель", type: "item", fast: true },
+            { id: "pumpkin_pie", name: "Тыквенный пирог", type: "item", fast: false },
+            { id: "rabbit", name: "Крольчатина", type: "item", fast: true },
+            { id: "cooked_rabbit", name: "Жареная крольчатина", type: "item", fast: true },
+            { id: "rabbit_stew", name: "Рагу из кролика", type: "item", fast: false },
+            { id: "mutton", name: "Баранина", type: "item", fast: true },
+            { id: "cooked_mutton", name: "Жареная баранина", type: "item", fast: true },
+            { id: "beetroot", name: "Свекла", type: "item", fast: true },
+            { id: "beetroot_soup", name: "Свекольный суп", type: "item", fast: true },
+            { id: "sweet_berries", name: "Сладкие ягоды", type: "item", fast: true },
+            { id: "glow_berries", name: "Светящиеся ягоды", type: "item", fast: true },
+            { id: "honey_bottle", name: "Бутылочка меда", type: "item", fast: false },
+            { id: "cod", name: "Треска", type: "item", fast: true },
+            { id: "cooked_cod", name: "Жареная треска", type: "item", fast: true },
+            { id: "salmon", name: "Лосось", type: "item", fast: true },
+            { id: "cooked_salmon", name: "Жареный лосось", type: "item", fast: true },
+            { id: "tropical_fish", name: "Тропическая рыба", type: "item", fast: true },
+            { id: "pufferfish", name: "Иглобрюх", type: "item", fast: true },
+
+            // Items
+            { id: "totem_of_undying", name: "Тотем бессмертия", type: "item" },
+            { id: "elytra", name: "Элитры", type: "item" },
+            { id: "trident", name: "Трезубец", type: "item" },
+            { id: "shield", name: "Щит", type: "item" },
+            { id: "crossbow", name: "Арбалет", type: "item" },
+            { id: "bow", name: "Лук", type: "item" },
+            { id: "arrow", name: "Стрела", type: "item" },
+            { id: "spectral_arrow", name: "Спектральная стрела", type: "item" },
+            { id: "golden_apple", name: "Золотое яблоко", type: "item" },
+            { id: "enchanted_golden_apple", name: "Зачарованное яблоко", type: "item" },
+            { id: "ender_pearl", name: "Жемчуг Эндера", type: "item" },
+            { id: "ender_eye", name: "Око Эндера", type: "item" },
+            { id: "firework_rocket", name: "Фейерверк", type: "item" },
+            { id: "fire_charge", name: "Огненный шар", type: "item" },
+            { id: "bucket", name: "Ведро", type: "item" },
+            { id: "water_bucket", name: "Ведро воды", type: "item" },
+            { id: "lava_bucket", name: "Ведро лавы", type: "item" },
+            { id: "milk_bucket", name: "Ведро молока", type: "item" },
+            { id: "powder_snow_bucket", name: "Ведро рыхлого снега", type: "item" },
+            { id: "fishing_rod", name: "Удочка", type: "item" },
+            { id: "flint_and_steel", name: "Огниво", type: "item" },
+            { id: "shears", name: "Ножницы", type: "item" },
+            { id: "spyglass", name: "Подзорная труба", type: "item" },
+            { id: "map", name: "Карта", type: "item" },
+            { id: "compass", name: "Компас", type: "item" },
+            { id: "recovery_compass", name: "Возвратный компас", type: "item" },
+            { id: "clock", name: "Часы", type: "item" },
+            { id: "name_tag", name: "Бирка", type: "item" },
+            { id: "lead", name: "Поводок", type: "item" },
+            { id: "saddle", name: "Седло", type: "item" },
+            { id: "flint", name: "Кремень", type: "item" },
+            { id: "coal", name: "Уголь", type: "item" },
+            { id: "charcoal", name: "Древесный уголь", type: "item" },
+            { id: "diamond", name: "Алмаз", type: "item" },
+            { id: "iron_ingot", name: "Железный слиток", type: "item" },
+            { id: "gold_ingot", name: "Золотой слиток", type: "item" },
+            { id: "copper_ingot", name: "Медный слиток", type: "item" },
+            { id: "netherite_ingot", name: "Незеритовый слиток", type: "item" },
+            { id: "stick", name: "Палка", type: "item" },
+            { id: "bowl", name: "Миска", type: "item" },
+            { id: "string", name: "Нить", type: "item" },
+            { id: "feather", name: "Перо", type: "item" },
+            { id: "gunpowder", name: "Порох", type: "item" },
+            { id: "wheat", name: "Пшеница", type: "item" },
+            { id: "wheat_seeds", name: "Семена пшеницы", type: "item" },
+            { id: "leather", name: "Кожа", type: "item" },
+            { id: "clay_ball", name: "Глина (предмет)", type: "item" },
+            { id: "paper", name: "Бумага", type: "item" },
+            { id: "book", name: "Книга", type: "item" },
+            { id: "slime_ball", name: "Сгусток слизи", type: "item" },
+            { id: "egg", name: "Яйцо", type: "item" },
+            { id: "glowstone_dust", name: "Светокаменная пыль", type: "item" },
+            { id: "ink_sac", name: "Чернильный мешок", type: "item" },
+            { id: "lapis_lazuli", name: "Лазурит", type: "item" },
+            { id: "bone_meal", name: "Костная мука", type: "item" },
+            { id: "bone", name: "Кость", type: "item" },
+            { id: "sugar", name: "Сахар", type: "item" },
+            { id: "nether_star", name: "Звезда Незера", type: "item" },
+            { id: "brick", name: "Кирпич (предмет)", type: "item" },
+            { id: "nether_brick", name: "Незерский кирпич (предмет)", type: "item" },
+            { id: "quartz", name: "Кварц", type: "item" },
+            { id: "prismarine_shard", name: "Призмариновый осколок", type: "item" },
+            { id: "prismarine_crystals", name: "Призмариновый кристалл", type: "item" },
+            { id: "rabbit_hide", name: "Кроличья шкурка", type: "item" },
+            { id: "rabbit_foot", name: "Кроличья лапка", type: "item" },
+            { id: "phantom_membrane", name: "Мембрана фантома", type: "item" },
+            { id: "nautilus_shell", name: "Раковина наутилуса", type: "item" },
+            { id: "heart_of_the_sea", name: "Сердце моря", type: "item" },
+            { id: "honeycomb", name: "Медовые соты", type: "item" },
+            { id: "amethyst_shard", name: "Осколок аметиста", type: "item" },
+            { id: "echo_shard", name: "Осколок эха", type: "item" },
+            { id: "disc_fragment_5", name: "Фрагмент пластинки 5", type: "item" },
+            { id: "slime_block", name: "Блок слизи" }, { id: "tnt", name: "Динамит" },
+
+            // 1.21
+            { id: "crafter", name: "Автокрафтер", type: "block" },
+            { id: "copper_bulb", name: "Медная лампа", type: "block" },
+            { id: "trial_spawner", name: "Рассадник испытаний", type: "block" },
+            { id: "vault", name: "Хранилище", type: "block" },
+            { id: "heavy_core", name: "Тяжелое ядро", type: "block" },
+            { id: "breeze_rod", name: "Стержень бриза", type: "item" },
+            { id: "mace", name: "Булава", type: "item" },
+            { id: "wind_charge", name: "Заряд ветра", type: "item" },
+            { id: "ominous_bottle", name: "Зловещая бутылочка", type: "item" },
+            { id: "trial_key", name: "Ключ испытаний", type: "item" },
+            { id: "sniffer_egg", name: "Яйцо нюхача", type: "block" },
+            { id: "torchflower", name: "Факельник", type: "block" },
+            { id: "pitcher_plant", name: "Кувшиночник", type: "block" },
+            { id: "brush", name: "Кисть", type: "item" }
+        ];
+
+        misc.forEach(m => {
+            const isBlock = m.type !== 'item';
+            pool.push({
+                id: m.id,
+                name: m.name,
+                type: m.type || (m.id.includes('bucket') || m.id.includes('ingot') || m.id.includes('dust') || m.id.includes('ball') || m.id.includes('meal') ? 'item' : 'block'),
+                fast: (m.id.includes('dirt') || m.id.includes('stone') || m.id.includes('wood') || m.id.includes('cobble'))
+            });
+        });
+
+        // Update counts
+        document.getElementById('pool-count').innerText = `Загружено предметов: ${pool.length} (Быстрых: ${quickPool.length})`;
+
+        // --- CORE FUNCTIONS ---
+        const displayImg = document.getElementById('block-image');
+        const displayName = document.getElementById('block-name');
+        const displayId = document.getElementById('block-id');
+        const displayType = document.getElementById('item-type');
+        const rollBtn = document.getElementById('roll-btn');
+        const rollFastBtn = document.getElementById('roll-fast-btn');
+        const modifierDisplay = document.getElementById('modifier-display');
+        let isRolling = false;
+
+        let timerInterval;
+        let startTime;
+        let elapsedTime = 0;
+        let isTimerRunning = false;
+
+        function formatTime(ms) {
+            let h = Math.floor(ms / 3600000);
+            let m = Math.floor((ms % 3600000) / 60000).toString().padStart(2, '0');
+            let s = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+            let msDisplay = Math.floor((ms % 1000) / 10).toString().padStart(2, '0');
+
+            if (h > 0) {
+                return `${h}:${m}:${s}:${msDisplay}`;
+            }
+            return `${m}:${s}:${msDisplay}`;
+        }
+
+        function updateTimerDisplay() {
+            const now = Date.now();
+            const time = now - startTime + elapsedTime;
+            document.getElementById('timer-display').innerText = formatTime(time);
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('timer-toggle-btn');
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                elapsedTime += Date.now() - startTime;
+                isTimerRunning = false;
+                btn.innerText = "СТАРТ";
+            } else {
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimerDisplay, 10);
+                isTimerRunning = true;
+                btn.innerText = "СТОП";
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            elapsedTime = 0;
+            document.getElementById('timer-display').innerText = "00:00:00";
+            const btn = document.getElementById('timer-toggle-btn');
+            btn.innerText = "СТАРТ";
+        }
+
+        function triggerShake() {
+            displayImg.classList.add('translate-y-1');
+            setTimeout(() => displayImg.classList.remove('translate-y-1'), 50);
+        }
+
+        function getItemImageUrl(item) {
+            if (item.type === 'potion_effect') {
+                return `https://raw.githubusercontent.com/misode/mcmeta/assets/assets/minecraft/textures/item/${item.baseId}.png`;
+            } else if (item.type === 'block') {
+                return `https://api.mineatar.io/cube/${item.id}`;
+            } else {
+                return `https://raw.githubusercontent.com/misode/mcmeta/assets/assets/minecraft/textures/item/${item.id}.png`;
+            }
+        }
+
+        function updateDisplay(item) {
+            displayName.innerText = item.name;
+
+            if (item.type === 'potion_effect') {
+                displayId.innerText = `minecraft:${item.baseId}`;
+                displayType.innerText = 'ЭФФЕКТ';
+                displayImg.style.transform = 'scale(0.9)';
+            } else {
+                displayId.innerText = `minecraft:${item.id}`;
+                displayType.innerText = item.type === 'block' ? 'БЛОК' : 'ПРЕДМЕТ';
+                displayImg.style.transform = item.type === 'block' ? 'scale(1)' : 'scale(0.9)';
+            }
+
+            displayImg.src = getItemImageUrl(item);
+            displayImg.onerror = null;
+
+            displayImg.onerror = function () {
+                const currentSrc = displayImg.src;
+                if (currentSrc.includes('mineatar')) {
+                    displayImg.src = `https://raw.githubusercontent.com/misode/mcmeta/assets/assets/minecraft/textures/block/${item.id}.png`;
+                    displayImg.onerror = function () {
+                        displayImg.src = `https://raw.githubusercontent.com/misode/mcmeta/assets/assets/minecraft/textures/item/${item.id}.png`;
+                        displayImg.onerror = function () {
+                            displayImg.src = `https://api.mineatar.io/cube/barrier`;
+                        };
+                    };
+                } else if (currentSrc.includes('mcmeta')) {
+                    if (!currentSrc.includes('block') && item.type !== 'block') {
+                        displayImg.src = `https://api.mineatar.io/cube/${item.id}`;
+                    } else {
+                        displayImg.src = `https://api.mineatar.io/cube/barrier`;
+                    }
+                } else {
+                    displayImg.src = `https://api.mineatar.io/cube/barrier`;
+                }
+            };
+        }
+
+        function startRoulette(mode) {
+            if (isRolling) return;
+            isRolling = true;
+            const currentPool = (mode === 'fast') ? quickPool : pool;
+            rollBtn.disabled = true;
+            rollFastBtn.disabled = true;
+            rollBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            rollFastBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            let counter = 0;
+            let speed = 50;
+            const totalRolls = 30;
+            displayImg.classList.remove('pop-in');
+            const loop = () => {
+                const randomItem = currentPool[Math.floor(Math.random() * currentPool.length)];
+                updateDisplay(randomItem);
+                triggerShake();
+                counter++;
+                if (counter < totalRolls) {
+                    if (counter > totalRolls - 10) speed += 30;
+                    else if (counter > totalRolls - 5) speed += 60;
+                    setTimeout(loop, speed);
+                } else {
+                    finalizeChoice(currentPool);
+                }
+            };
+            loop();
+        }
+
+        function finalizeChoice(currentPool) {
+            const finalItem = currentPool[Math.floor(Math.random() * currentPool.length)];
+            updateDisplay(finalItem);
+            displayImg.classList.add('pop-in');
+            isRolling = false;
+            rollBtn.disabled = false;
+            rollFastBtn.disabled = false;
+            rollBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            rollFastBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function rollModifier() {
+            let counter = 0;
+            let speed = 50;
+            const totalRolls = 15;
+            const loop = () => {
+                const randomMod = modifiers[Math.floor(Math.random() * modifiers.length)];
+                modifierDisplay.innerText = randomMod;
+                counter++;
+                if (counter < totalRolls) {
+                    speed += 15;
+                    setTimeout(loop, speed);
+                } else {
+                    modifierDisplay.classList.add('pop-in');
+                    setTimeout(() => modifierDisplay.classList.remove('pop-in'), 300);
+                }
+            };
+            loop();
+        }
+
+        function copyId() {
+            const text = displayId.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.classList.remove('hidden');
+                setTimeout(() => { toast.classList.add('hidden'); }, 2000);
+            });
+        }
+
+        function toggleModal() {
+            const modal = document.getElementById('list-modal');
+            const isHidden = modal.classList.contains('hidden');
+            if (isHidden) {
+                modal.classList.remove('hidden');
+                renderList();
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderList() {
+            const grid = document.getElementById('modal-grid');
+            const onlyFast = document.getElementById('filter-fast').checked;
+            const search = document.getElementById('search-input').value.toLowerCase();
+            let items = onlyFast ? quickPool : pool;
+            if (search) {
+                items = items.filter(i => i.name.toLowerCase().includes(search) || i.id.includes(search));
+            }
+            let html = '';
+            items.forEach(item => {
+                let iconUrl = getItemImageUrl(item);
+                html += `
+                    <div class="flex flex-col items-center p-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600 transition">
+                        <img src="${iconUrl}" 
+                             loading="lazy"
+                             class="w-12 h-12 object-contain image-rendering-pixelated mb-1" 
+                             onerror="this.src='https://api.mineatar.io/cube/barrier'">
+                        <span class="text-center text-white text-sm leading-tight">${item.name}</span>
+                    </div>
+                `;
+            });
+            if (items.length === 0) {
+                html = '<div class="col-span-full text-center text-white text-xl py-10">Ничего не найдено :(</div>';
+            }
+            grid.innerHTML = html;
+        }
+    </script>
+</body>
+
+</html>
