@@ -26,6 +26,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
@@ -33,6 +34,7 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -58,6 +60,7 @@ import java.util.*;
 
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.ChatMessageType;
 import org.bukkit.block.Block;
 
 public class SpeedrunPlugin extends JavaPlugin implements Listener {
@@ -107,7 +110,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private boolean pendingRandomItem = true;
     
     private static final int INFINITE_EFFECT_DURATION = Integer.MAX_VALUE;
-    private static final int ELYTRA_FIREWORK_AMOUNT = 64;
+    private static final int ELYTRA_FIREWORK_AMOUNT = 10;
+    private static final long ELYTRA_FIREWORK_REFILL_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
     private final ItemStack lockedSlotItem = new ItemStack(Material.BARRIER);
 
     private final EnumSet<GameModifier> modifierPool = EnumSet.noneOf(GameModifier.class);
@@ -122,6 +126,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     // Player state for modifiers
     private final Set<UUID> landedFromCapsule = new HashSet<>();
     private final Map<UUID, Long> lastAggressiveAnimalHit = new HashMap<>();
+    private final Map<UUID, Long> elytraFireworkLastRefill = new HashMap<>();
+    private BukkitTask elytraTimerTask = null;
 
     // Modifiers configuration
     private String modifierMode;
@@ -619,6 +625,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         startLunarItemTask();
         startAggressiveAnimalsTask();
+        startElytraTimerTask();
     }
 
     private void cleanupModifiers() {
@@ -640,6 +647,10 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             aggressiveAnimalsTask.cancel();
             aggressiveAnimalsTask = null;
         }
+        if (elytraTimerTask != null) {
+            elytraTimerTask.cancel();
+            elytraTimerTask = null;
+        }
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             removeHotbarOnlyLock(player);
@@ -652,6 +663,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         landedFromCapsule.clear();
         lastAggressiveAnimalHit.clear();
+        elytraFireworkLastRefill.clear();
 
         restoreWorldState();
         activeModifiers.clear();
@@ -883,34 +895,48 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         PlayerInventory inv = player.getInventory();
         boolean changed = false;
 
+        // Ensure player always has unbreakable elytra
         ItemStack chestplate = inv.getChestplate();
         if (chestplate == null || chestplate.getType() == Material.AIR) {
-            inv.setChestplate(new ItemStack(Material.ELYTRA));
+            inv.setChestplate(createUnbreakableElytra());
             changed = true;
         } else if (chestplate.getType() != Material.ELYTRA) {
             storeItemOrDrop(player, chestplate);
-            inv.setChestplate(new ItemStack(Material.ELYTRA));
+            inv.setChestplate(createUnbreakableElytra());
             changed = true;
+        } else {
+            // Make sure existing elytra is unbreakable
+            ItemMeta meta = chestplate.getItemMeta();
+            if (meta != null && !meta.isUnbreakable()) {
+                meta.setUnbreakable(true);
+                chestplate.setItemMeta(meta);
+                changed = true;
+            }
         }
-        // If player already has elytra (even enchanted), keep it as-is
 
+        // Only prevent other items in offhand, but don't auto-refill fireworks
+        // Fireworks are given at game start and refilled every 10 minutes via timer
         ItemStack offHand = inv.getItemInOffHand();
-        if (offHand == null || offHand.getType() == Material.AIR) {
-            inv.setItemInOffHand(createFireworkStack());
-            changed = true;
-        } else if (offHand.getType() != Material.FIREWORK_ROCKET) {
+        if (offHand != null && offHand.getType() != Material.AIR && offHand.getType() != Material.FIREWORK_ROCKET) {
+            // Player has something other than fireworks in offhand - move it
             storeItemOrDrop(player, offHand);
-            inv.setItemInOffHand(createFireworkStack());
-            changed = true;
-        } else if (offHand.getAmount() < ELYTRA_FIREWORK_AMOUNT) {
-            offHand.setAmount(ELYTRA_FIREWORK_AMOUNT);
-            inv.setItemInOffHand(offHand);
+            inv.setItemInOffHand(new ItemStack(Material.AIR));
             changed = true;
         }
 
         if (changed) {
             player.updateInventory();
         }
+    }
+
+    private ItemStack createUnbreakableElytra() {
+        ItemStack elytra = new ItemStack(Material.ELYTRA);
+        ItemMeta meta = elytra.getItemMeta();
+        if (meta != null) {
+            meta.setUnbreakable(true);
+            elytra.setItemMeta(meta);
+        }
+        return elytra;
     }
 
     private ItemStack createFireworkStack() {
@@ -1039,6 +1065,70 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 }
             }
         }.runTaskTimer(this, 20L, 10L);
+    }
+
+    private void startElytraTimerTask() {
+        if (elytraTimerTask != null) {
+            elytraTimerTask.cancel();
+            elytraTimerTask = null;
+        }
+
+        if (!activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
+            return;
+        }
+
+        elytraTimerTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!gameActive || !activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
+                    cancel();
+                    return;
+                }
+                // Wait for game to actually start (after countdown)
+                if (!gameStarted) return;
+                if (gamePaused) return;
+
+                long currentTime = System.currentTimeMillis();
+
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!activePlayers.contains(player.getUniqueId())) {
+                        continue;
+                    }
+
+                    // Initialize refill time for new players
+                    if (!elytraFireworkLastRefill.containsKey(player.getUniqueId())) {
+                        elytraFireworkLastRefill.put(player.getUniqueId(), currentTime);
+                    }
+
+                    long lastRefill = elytraFireworkLastRefill.get(player.getUniqueId());
+                    long timeSinceRefill = currentTime - lastRefill;
+
+                    // Refill fireworks every 10 minutes
+                    if (timeSinceRefill >= ELYTRA_FIREWORK_REFILL_INTERVAL) {
+                        PlayerInventory inv = player.getInventory();
+                        ItemStack offHand = inv.getItemInOffHand();
+
+                        if (offHand != null && offHand.getType() == Material.FIREWORK_ROCKET) {
+                            offHand.setAmount(ELYTRA_FIREWORK_AMOUNT);
+                        } else {
+                            inv.setItemInOffHand(createFireworkStack());
+                        }
+
+                        player.updateInventory();
+                        elytraFireworkLastRefill.put(player.getUniqueId(), currentTime);
+                        player.sendMessage("§aФейерверки пополнены! (+10)");
+                    }
+
+                    // Display timer above hotbar
+                    long timeUntilRefill = ELYTRA_FIREWORK_REFILL_INTERVAL - timeSinceRefill;
+                    int minutes = (int) (timeUntilRefill / 60000);
+                    int seconds = (int) ((timeUntilRefill % 60000) / 1000);
+
+                    String timerText = String.format("§6Фейерверки: §f%d:%02d", minutes, seconds);
+                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(timerText));
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L); // Update every second
     }
 
     private boolean isAggressiveAnimalCandidate(LivingEntity entity) {
@@ -1517,6 +1607,10 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
             if (activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
                 enforceElytraMode(player);
+                // Give initial fireworks
+                player.getInventory().setItemInOffHand(createFireworkStack());
+                // Initialize firework refill timer for this player
+                elytraFireworkLastRefill.put(player.getUniqueId(), System.currentTimeMillis());
             }
 
             // Give God Mode (Resistance 255) for 20 seconds to guarantee fall survival
@@ -1674,6 +1768,50 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 startPreGame();
             }
             return;
+        }
+
+        // Prevent removing elytra in ELYTRA_MODE
+        if (gameActive && gameStarted && activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
+            if (event.getWhoClicked() instanceof Player) {
+                Player p = (Player) event.getWhoClicked();
+
+                // Check if player is trying to interact with armor slot (chestplate)
+                if (event.getSlotType() == org.bukkit.event.inventory.InventoryType.SlotType.ARMOR) {
+                    ItemStack clickedItem = event.getCurrentItem();
+                    if (clickedItem != null && clickedItem.getType() == Material.ELYTRA) {
+                        event.setCancelled(true);
+                        p.sendMessage("§cВы не можете снять элитры во время модификатора 'Где твои крылья'!");
+                        return;
+                    }
+                }
+
+                // Prevent shift-clicking elytra
+                if (event.isShiftClick()) {
+                    ItemStack cursor = event.getCursor();
+                    ItemStack current = event.getCurrentItem();
+
+                    // Check if trying to shift-click elytra out of armor slot
+                    if (event.getClickedInventory() instanceof PlayerInventory &&
+                        current != null && current.getType() == Material.ELYTRA &&
+                        event.getSlot() == 38) { // 38 is chestplate slot
+                        event.setCancelled(true);
+                        p.sendMessage("§cВы не можете снять элитры во время модификатора 'Где твои крылья'!");
+                        return;
+                    }
+                }
+
+                // Prevent clicking elytra with another item to swap
+                if (event.getSlot() == 38 && event.getClickedInventory() instanceof PlayerInventory) {
+                    ItemStack cursor = event.getCursor();
+                    ItemStack current = event.getCurrentItem();
+                    if ((current != null && current.getType() == Material.ELYTRA) ||
+                        (cursor != null && cursor.getType() != Material.AIR)) {
+                        event.setCancelled(true);
+                        p.sendMessage("§cВы не можете снять элитры во время модификатора 'Где твои крылья'!");
+                        return;
+                    }
+                }
+            }
         }
 
         if (!gameActive || !activeModifiers.contains(GameModifier.HOTBAR_ONLY)) {
@@ -2328,6 +2466,33 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private void playCountdownSound() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerItemDamage(PlayerItemDamageEvent event) {
+        if (!gameActive || !gameStarted || !activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
+            return;
+        }
+
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.ELYTRA) {
+            // Prevent elytra from taking damage
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (!gameActive || !gameStarted || !activeModifiers.contains(GameModifier.ELYTRA_MODE)) {
+            return;
+        }
+
+        ItemStack item = event.getItemDrop().getItemStack();
+        if (item != null && item.getType() == Material.ELYTRA) {
+            // Prevent dropping elytra
+            event.setCancelled(true);
+            event.getPlayer().sendMessage("§cВы не можете выбросить элитры во время модификатора 'Где твои крылья'!");
         }
     }
 }
