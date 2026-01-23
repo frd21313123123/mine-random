@@ -41,6 +41,7 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -89,6 +90,22 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private BukkitTask fireworksTask = null;
     private final Random random = new Random();
 
+    // GUI constants
+    private static final String MENU_TITLE_KEY = "menu-title";
+    private static final int MENU_SIZE = 27;
+    private static final int SLOT_ITEM = 11;
+    private static final int SLOT_START = 13;
+    private static final int SLOT_MODIFIER = 15;
+
+    // GUI State (Transient, per player who opened menu)
+    // We only support one pending config at a time (global) because the game is global.
+    private GameModifier pendingModifier = null; // null means 'random' or 'none' logic? 
+    // Let's make: null = Random from pool, or specific. 
+    // Actually, let's use a separate variable for "Menu Selection Mode"
+    private boolean pendingRandomModifier = true;
+    private GameModifier pendingSpecificModifier = null; // Used if pendingRandomModifier is false
+    private boolean pendingRandomItem = true;
+    
     private static final int INFINITE_EFFECT_DURATION = Integer.MAX_VALUE;
     private static final int ELYTRA_FIREWORK_AMOUNT = 64;
     private final ItemStack lockedSlotItem = new ItemStack(Material.BARRIER);
@@ -1057,6 +1074,110 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         return nearest;
     }
 
+    private void openConfigMenu(Player player) {
+        org.bukkit.inventory.Inventory inv = Bukkit.createInventory(null, MENU_SIZE, getMessage(MENU_TITLE_KEY));
+        
+        // Initialize pending state
+        pendingRandomModifier = true; // Default to random
+        pendingSpecificModifier = null;
+        pendingRandomItem = true; // Default to random
+        
+        // If we have a previous target item from a previous game, allow switching to it
+        // (logic handled in click event)
+        
+        updateConfigMenu(inv);
+        player.openInventory(inv);
+    }
+
+    private void updateConfigMenu(org.bukkit.inventory.Inventory inv) {
+        // 1. Item Selector (Slot 11)
+        ItemStack itemSelector;
+        if (pendingRandomItem) {
+            itemSelector = new ItemStack(Material.CHEST);
+            ItemMeta meta = itemSelector.getItemMeta();
+            meta.setDisplayName(getMessage("menu-item-random"));
+            meta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
+            itemSelector.setItemMeta(meta);
+        } else {
+            // Specific item
+            itemSelector = new ItemStack(targetItem != null ? targetItem : Material.BARRIER);
+            ItemMeta meta = itemSelector.getItemMeta();
+            meta.setDisplayName(getMessage("menu-item-specific", "item", formatItemName(targetItem)));
+            meta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
+            itemSelector.setItemMeta(meta);
+        }
+        inv.setItem(SLOT_ITEM, itemSelector);
+
+        // 2. Start Button (Slot 13)
+        ItemStack startBtn = new ItemStack(Material.LIME_CONCRETE);
+        ItemMeta startMeta = startBtn.getItemMeta();
+        startMeta.setDisplayName(getMessage("menu-start-title"));
+        startMeta.setLore(Collections.singletonList(getMessage("menu-start-lore")));
+        startBtn.setItemMeta(startMeta);
+        inv.setItem(SLOT_START, startBtn);
+
+        // 3. Modifier Selector (Slot 15)
+        ItemStack modSelector;
+        String modName;
+        Material modIcon;
+        
+        if (pendingRandomModifier) {
+            modName = "Random";
+            modIcon = Material.COMMAND_BLOCK;
+        } else if (pendingSpecificModifier == null) {
+            modName = getMessage("modifier-none");
+            modIcon = Material.BARRIER;
+        } else {
+            // Get display name for specific modifier
+            // We need a way to get display name without activeModifiers set. 
+            // Reuse logic or duplicate simple switch? simpler to duplicate for GUI or refactor.
+            // Let's just use the enum name for now or map it.
+            // Actually I can just add a helper method getModifierName(GameModifier)
+            modName = getModifierName(pendingSpecificModifier);
+            modIcon = Material.GOLD_BLOCK; // Generic icon or specific?
+            
+            // Optional: Specific icons
+            switch (pendingSpecificModifier) {
+                case GOLDEN_TOOLS_ONLY: modIcon = Material.GOLDEN_PICKAXE; break;
+                case VEGETARIAN_ONLY: modIcon = Material.CARROT; break;
+                case TIME_X2: modIcon = Material.CLOCK; break;
+                case INFINITE_NIGHT: modIcon = Material.BLACK_BED; break;
+                case LUNAR_GRAVITY: modIcon = Material.FEATHER; break;
+                case NO_VILLAGER_TRADING: modIcon = Material.EMERALD; break;
+                case RANDOM_BLOCK_DROPS: modIcon = Material.DISPENSER; break;
+                case AGGRESSIVE_ANIMALS: modIcon = Material.ZOMBIE_HEAD; break;
+                case HOTBAR_ONLY: modIcon = Material.STRUCTURE_VOID; break;
+                case ELYTRA_MODE: modIcon = Material.ELYTRA; break;
+            }
+        }
+        
+        modSelector = new ItemStack(modIcon);
+        ItemMeta modMeta = modSelector.getItemMeta();
+        modMeta.setDisplayName(getMessage("menu-modifier-title", "modifier", modName));
+        modMeta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
+        modSelector.setItemMeta(modMeta);
+        inv.setItem(SLOT_MODIFIER, modSelector);
+        
+        // Fill background? optional.
+    }
+    
+    private String getModifierName(GameModifier mod) {
+        if (mod == null) return getMessage("modifier-none");
+        switch (mod) {
+            case GOLDEN_TOOLS_ONLY: return getMessage("modifier-golden-tools-only");
+            case VEGETARIAN_ONLY: return getMessage("modifier-vegetarian-only");
+            case TIME_X2: return getMessage("modifier-time-x2");
+            case INFINITE_NIGHT: return getMessage("modifier-infinite-night");
+            case LUNAR_GRAVITY: return getMessage("modifier-lunar-gravity");
+            case NO_VILLAGER_TRADING: return getMessage("modifier-no-villager-trading");
+            case RANDOM_BLOCK_DROPS: return getMessage("modifier-random-block-drops");
+            case AGGRESSIVE_ANIMALS: return getMessage("modifier-aggressive-animals");
+            case HOTBAR_ONLY: return getMessage("modifier-hotbar-only");
+            case ELYTRA_MODE: return getMessage("modifier-elytra-mode");
+            default: return mod.name();
+        }
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("speedrun")) {
@@ -1071,13 +1192,18 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             }
 
             if (args.length < 1) {
-                sender.sendMessage(getMessage("usage"));
-                sender.sendMessage(getMessage("usage-example"));
-                sender.sendMessage(getMessage("usage-random"));
+                // Open GUI if no args
+                openConfigMenu((Player) sender);
                 return true;
             }
 
             String itemArg = args[0].toLowerCase();
+
+            // Check for menu command explicitly
+            if (itemArg.equals("menu")) {
+                openConfigMenu((Player) sender);
+                return true;
+            }
 
             // Check for random mode
             if (itemArg.equals("random") || itemArg.equals("случайный")) {
@@ -1473,6 +1599,83 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals(getMessage(MENU_TITLE_KEY))) {
+            event.setCancelled(true);
+            if (event.getCurrentItem() == null) return;
+            
+            Player player = (Player) event.getWhoClicked();
+            int slot = event.getSlot();
+            
+            if (slot == SLOT_ITEM) {
+                // Toggle Random Item <-> Specific (if set previously, otherwise just stay Random)
+                // Since we don't have an anvil GUI, let's just toggle Random ON/OFF if targetItem is already set.
+                // If targetItem is null, we can only be Random.
+                if (targetItem != null) {
+                    pendingRandomItem = !pendingRandomItem;
+                    // If we switched to specific but targetItem is null (shouldn't happen with logic above), switch back
+                } else {
+                    pendingRandomItem = true;
+                    // Maybe play a sound indicating "Use command to set specific item first"
+                }
+                updateConfigMenu(event.getClickedInventory());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+            } else if (slot == SLOT_MODIFIER) {
+                // Cycle modifiers: Random -> None -> [List...] -> Random
+                if (pendingRandomModifier) {
+                    pendingRandomModifier = false;
+                    pendingSpecificModifier = null; // None
+                } else if (pendingSpecificModifier == null) {
+                    // Was None, go to first modifier
+                    if (!modifierPool.isEmpty()) {
+                        pendingSpecificModifier = modifierPool.iterator().next();
+                    } else {
+                        // No modifiers available, go back to Random
+                        pendingRandomModifier = true;
+                    }
+                } else {
+                    // Go to next modifier
+                    List<GameModifier> mods = new ArrayList<>(modifierPool);
+                    int index = mods.indexOf(pendingSpecificModifier);
+                    if (index >= 0 && index < mods.size() - 1) {
+                        pendingSpecificModifier = mods.get(index + 1);
+                    } else {
+                        // End of list, go back to Random
+                        pendingRandomModifier = true;
+                        pendingSpecificModifier = null;
+                    }
+                }
+                updateConfigMenu(event.getClickedInventory());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+            } else if (slot == SLOT_START) {
+                player.closeInventory();
+                
+                // Configure game based on pending settings
+                if (pendingRandomItem) {
+                    List<Material> obtainable = getAllObtainableItems();
+                    targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                    broadcastMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
+                } else {
+                    // Use existing targetItem
+                    if (targetItem == null) {
+                         // Fallback
+                         List<Material> obtainable = getAllObtainableItems();
+                         targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                    }
+                }
+                
+                activeModifiers.clear();
+                if (pendingRandomModifier) {
+                    GameModifier randomMod = pickRandomModifier();
+                    if (randomMod != null) activeModifiers.add(randomMod);
+                } else if (pendingSpecificModifier != null) {
+                    activeModifiers.add(pendingSpecificModifier);
+                }
+                
+                startPreGame();
+            }
+            return;
+        }
+
         if (!gameActive || !activeModifiers.contains(GameModifier.HOTBAR_ONLY)) {
             return;
         }

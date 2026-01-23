@@ -96,3 +96,12 @@ technical-victory-reason: "&6║ &7Last survivor"
 technical-victory-footer: "&6╚═════════════════════════════════╝"
 technical-victory-broadcast-title: "&e🏅 %player% 🏅"
 technical-victory-broadcast-subtitle: "&7Technical Victory | &aTime: %time%"
+
+# GUI Menu
+menu-title: "&8Speedrun Config"
+menu-item-random: "&eRandom Item"
+menu-item-specific: "&eCurrent Item: &b%item%"
+menu-item-lore-click: "&7Click to toggle"
+menu-modifier-title: "&6Modifier: &b%modifier%"
+menu-start-title: "&a▶ START GAME"
+menu-start-lore: "&7Click to start"

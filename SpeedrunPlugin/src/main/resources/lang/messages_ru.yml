@@ -96,3 +96,12 @@ technical-victory-reason: "&6║ &7Последний выживший"
 technical-victory-footer: "&6╚═════════════════════════════════╝"
 technical-victory-broadcast-title: "&e🏅 %player% 🏅"
 technical-victory-broadcast-subtitle: "&7Техническая победа | &aВремя: %time%"
+
+# GUI Menu
+menu-title: "&8Настройка Спидрана"
+menu-item-random: "&eСлучайный предмет"
+menu-item-specific: "&eТекущий предмет: &b%item%"
+menu-item-lore-click: "&7Нажмите для переключения"
+menu-modifier-title: "&6Модификатор: &b%modifier%"
+menu-start-title: "&a▶ ЗАПУСТИТЬ ИГРУ"
+menu-start-lore: "&7Нажмите, чтобы начать"
