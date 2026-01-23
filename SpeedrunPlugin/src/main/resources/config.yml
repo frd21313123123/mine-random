@@ -46,3 +46,26 @@ world:
 sounds:
   # Enable sounds / Включить звуки
   enabled: true
+
+# Modifiers / Модификаторы
+#
+# Mode options:
+# - none   : no modifier
+# - random : pick one random modifier from the pool
+#
+# You can also override per game by using a 2nd argument:
+# /speedrun <item|random> <modifier>
+# Example: /speedrun random moon
+modifiers:
+  mode: random
+  pool:
+    golden-tools-only: true
+    vegetarian-only: true
+    time-x2: true
+    infinite-night: true
+    lunar-gravity: true
+    no-villager-trading: true
+    random-block-drops: true
+    aggressive-animals: true
+    hotbar-only: true
+    elytra-mode: true

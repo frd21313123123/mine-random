@@ -1,5 +1,5 @@
 name: SpeedrunPlugin
-version: 1.7.0
+version: 1.8.0
 main: com.speedrun.SpeedrunPlugin
 api-version: '1.21'
 description: Item Speedrun Competition Plugin
@@ -8,12 +8,25 @@ author: Randomizer
 commands:
   speedrun:
     description: Start a speedrun competition
-    usage: /speedrun <item_id>
+    usage: /speedrun <item_id|random> [modifier]
     permission: speedrun.start
   speedrunstop:
     description: Stop current speedrun
     usage: /speedrunstop
     permission: speedrun.stop
+  speedrunpause:
+    description: Pause current speedrun
+    usage: /speedrunpause
+    permission: speedrun.pause
+    aliases:
+      - pause
+  speedrunresume:
+    description: Resume paused speedrun
+    usage: /speedrunresume
+    permission: speedrun.resume
+    aliases:
+      - resume
+      - resusme
 
 permissions:
   speedrun.start:
@@ -21,4 +34,10 @@ permissions:
     default: op
   speedrun.stop:
     description: Allows stopping a speedrun
+    default: op
+  speedrun.pause:
+    description: Allows pausing a speedrun
+    default: op
+  speedrun.resume:
+    description: Allows resuming a speedrun
     default: op

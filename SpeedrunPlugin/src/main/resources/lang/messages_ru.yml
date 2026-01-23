@@ -9,7 +9,7 @@ game-not-running: "&cИгра не запущена."
 game-stopped-admin: "&e⚠ Спидран остановлен администратором!"
 
 # Command usage
-usage: "&cИспользование: /speedrun <item_id> или /speedrun random"
+usage: "&cИспользование: /speedrun <item_id|random> [modifier]"
 usage-example: "&7Пример: /speedrun minecraft:diamond"
 usage-random: "&7Или: /speedrun random — случайный предмет"
 unknown-item: "&cНеизвестный предмет: %item%"
@@ -17,6 +17,32 @@ check-item-id: "&7Убедитесь, что ID правильный (напри
 
 # Random mode
 random-item-selected: "&a✓ Выбран случайный предмет: &b%item%"
+
+# Modifiers
+modifier-selected: "&e🎲 Модификатор: &b%modifier%"
+modifier-none: "Без модификатора"
+modifier-hotbar-only: "Только хотбар"
+modifier-elytra-mode: "Где твои крылья"
+modifier-golden-tools-only: "Только золотые инструменты"
+modifier-vegetarian-only: "Только растительная еда"
+modifier-time-x2: "Время x2"
+modifier-infinite-night: "Бесконечная ночь"
+modifier-lunar-gravity: "Лунная гравитация"
+modifier-no-villager-trading: "Без торговли с жителями"
+modifier-random-block-drops: "Рандомный дроп"
+modifier-aggressive-animals: "Агрессивные животные"
+unknown-modifier: "&cНеизвестный модификатор: %modifier%"
+available-modifiers: "&7Доступные: random, none, gold, veg, time2, night, moon, notrade, randdrop, aggro, elytra"
+vegetarian-blocked: "&cМожно есть только растительную еду!"
+night-no-sleep: "&cВ бесконечной ночи спать нельзя!"
+villager-trading-blocked: "&cТорговля с жителями запрещена во время спидрана!"
+
+# Pause/Resume
+game-paused: "&e⏸ Игра приостановлена!"
+game-paused-click: "&a[▶ Продолжить]"
+game-resumed: "&a▶ Игра продолжается!"
+game-not-paused: "&cИгра не на паузе."
+game-already-paused: "&cИгра уже на паузе!"
 
 # Game start
 game-title: "&6СПИДРАН"
@@ -55,7 +81,18 @@ victory-broadcast-title: "&6🏆 %player% 🏆"
 victory-broadcast-subtitle: "&aВремя: %time%"
 
 # Tab list
-tab-header: "&6═══ &fСПИДРАН &6═══\n&eЦель: &b%item%"
-tab-footer: "&a⏱ Время: &f%time%\n&7Игроков: %count%"
+tab-header: "&6═══ &fСПИДРАН &6═══\n&eЦель: &b%item%\n&eМодификатор: &b%modifier%"
+tab-footer: "&a⏱ Время: &f%time%\n&7Спидраннеры: &f%active%&7/&f%total%"
 tab-victory-header: "&6═══ &aПОБЕДА! &6═══"
 tab-victory-footer: "&fПобедитель: &b%player%\n&aВремя: &f%time%"
+tab-technical-victory-footer: "&fПобедитель: &b%player%\n&eТехническая победа\n&aВремя: &f%time%"
+
+# Technical Victory (Last man standing)
+technical-victory-header: "&6╔═════════════════════════════════╗"
+technical-victory-title: "&6║&e   🏅 ТЕХНИЧЕСКАЯ ПОБЕДА! 🏅      "
+technical-victory-separator: "&6╠═════════════════════════════════╣"
+technical-victory-player: "&6║ &fИгрок: &b%player%"
+technical-victory-reason: "&6║ &7Последний выживший"
+technical-victory-footer: "&6╚═════════════════════════════════╝"
+technical-victory-broadcast-title: "&e🏅 %player% 🏅"
+technical-victory-broadcast-subtitle: "&7Техническая победа | &aВремя: %time%"

@@ -9,7 +9,7 @@ game-not-running: "&cGame is not running."
 game-stopped-admin: "&e⚠ Speedrun stopped by administrator!"
 
 # Command usage
-usage: "&cUsage: /speedrun <item_id> or /speedrun random"
+usage: "&cUsage: /speedrun <item_id|random> [modifier]"
 usage-example: "&7Example: /speedrun minecraft:diamond"
 usage-random: "&7Or: /speedrun random — random item"
 unknown-item: "&cUnknown item: %item%"
@@ -17,6 +17,32 @@ check-item-id: "&7Make sure the ID is correct (e.g.: minecraft:diamond)"
 
 # Random mode
 random-item-selected: "&a✓ Random item selected: &b%item%"
+
+# Modifiers
+modifier-selected: "&e🎲 Modifier: &b%modifier%"
+modifier-none: "No modifier"
+modifier-hotbar-only: "Hotbar only"
+modifier-elytra-mode: "Where are your wings"
+modifier-golden-tools-only: "Golden tools only"
+modifier-vegetarian-only: "Vegetarian only"
+modifier-time-x2: "Time x2"
+modifier-infinite-night: "Infinite night"
+modifier-lunar-gravity: "Lunar gravity"
+modifier-no-villager-trading: "No villager trading"
+modifier-random-block-drops: "Random block drops"
+modifier-aggressive-animals: "Aggressive animals"
+unknown-modifier: "&cUnknown modifier: %modifier%"
+available-modifiers: "&7Available: random, none, gold, veg, time2, night, moon, notrade, randdrop, aggro, elytra"
+vegetarian-blocked: "&cYou can only eat non-animal food!"
+night-no-sleep: "&cYou can't sleep during infinite night!"
+villager-trading-blocked: "&cVillager trading is disabled during the speedrun!"
+
+# Pause/Resume
+game-paused: "&e⏸ Game paused!"
+game-paused-click: "&a[▶ Resume]"
+game-resumed: "&a▶ Game resumed!"
+game-not-paused: "&cGame is not paused."
+game-already-paused: "&cGame is already paused!"
 
 # Game start
 game-title: "&6SPEEDRUN"
@@ -55,7 +81,18 @@ victory-broadcast-title: "&6🏆 %player% 🏆"
 victory-broadcast-subtitle: "&aTime: %time%"
 
 # Tab list
-tab-header: "&6═══ &fSPEEDRUN &6═══\n&eTarget: &b%item%"
-tab-footer: "&a⏱ Time: &f%time%\n&7Players: %count%"
+tab-header: "&6═══ &fSPEEDRUN &6═══\n&eTarget: &b%item%\n&eModifier: &b%modifier%"
+tab-footer: "&a⏱ Time: &f%time%\n&7Speedrunners: &f%active%&7/&f%total%"
 tab-victory-header: "&6═══ &aVICTORY! &6═══"
 tab-victory-footer: "&fWinner: &b%player%\n&aTime: &f%time%"
+tab-technical-victory-footer: "&fWinner: &b%player%\n&eTechnical Victory\n&aTime: &f%time%"
+
+# Technical Victory (Last man standing)
+technical-victory-header: "&6╔═════════════════════════════════╗"
+technical-victory-title: "&6║&e   🏅 TECHNICAL VICTORY! 🏅      "
+technical-victory-separator: "&6╠═════════════════════════════════╣"
+technical-victory-player: "&6║ &fPlayer: &b%player%"
+technical-victory-reason: "&6║ &7Last survivor"
+technical-victory-footer: "&6╚═════════════════════════════════╝"
+technical-victory-broadcast-title: "&e🏅 %player% 🏅"
+technical-victory-broadcast-subtitle: "&7Technical Victory | &aTime: %time%"
