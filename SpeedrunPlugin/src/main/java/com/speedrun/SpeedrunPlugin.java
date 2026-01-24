@@ -118,6 +118,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private final EnumSet<GameModifier> activeModifiers = EnumSet.noneOf(GameModifier.class);
 
     private List<Material> obtainableItemsCache = null;
+    private final Map<Material, Material> blockDropMapping = new HashMap<>();
 
     // World state (for time-related modifiers)
     private Long originalWorldTime = null;
@@ -1399,6 +1400,21 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         landedFromCapsule.clear();
         lastAggressiveAnimalHit.clear();
 
+        // Initialize random block drop mapping for RANDOM_BLOCK_DROPS modifier
+        blockDropMapping.clear();
+        if (activeModifiers.contains(GameModifier.RANDOM_BLOCK_DROPS)) {
+            List<Material> obtainable = getAllObtainableItems();
+            if (!obtainable.isEmpty()) {
+                // Assign a random drop to each block type
+                for (Material blockType : Material.values()) {
+                    if (blockType.isBlock() && !blockType.isLegacy()) {
+                        Material randomDrop = obtainable.get(random.nextInt(obtainable.size()));
+                        blockDropMapping.put(blockType, randomDrop);
+                    }
+                }
+            }
+        }
+
         World world = Bukkit.getWorlds().get(0);
 
         applyTimeModifier(world);
@@ -2000,13 +2016,22 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         // Cancel normal block drops
         event.setDropItems(false);
 
-        List<Material> obtainable = getAllObtainableItems();
-        if (obtainable.isEmpty()) {
-            return;
+        // Get the assigned drop for this block type from mapping
+        Material blockType = event.getBlock().getType();
+        Material drop = blockDropMapping.get(blockType);
+
+        if (drop == null) {
+            // Fallback: if block type not in mapping, assign one now
+            List<Material> obtainable = getAllObtainableItems();
+            if (!obtainable.isEmpty()) {
+                drop = obtainable.get(random.nextInt(obtainable.size()));
+                blockDropMapping.put(blockType, drop);
+            } else {
+                return;
+            }
         }
 
-        // Drop a random item instead of the normal block drop
-        Material drop = obtainable.get(random.nextInt(obtainable.size()));
+        // Drop the assigned item for this block type
         event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
                 new ItemStack(drop));
     }
