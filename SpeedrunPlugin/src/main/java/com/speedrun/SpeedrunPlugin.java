@@ -112,14 +112,15 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private static final int SLOT_START = 49;
 
     // GUI State (Transient, per player who opened menu)
-    // We only support one pending config at a time (global) because the game is global.
-    private GameModifier pendingModifier = null; // null means 'random' or 'none' logic? 
-    // Let's make: null = Random from pool, or specific. 
+    // We only support one pending config at a time (global) because the game is
+    // global.
+    private GameModifier pendingModifier = null; // null means 'random' or 'none' logic?
+    // Let's make: null = Random from pool, or specific.
     // Actually, let's use a separate variable for "Menu Selection Mode"
     private boolean pendingRandomModifier = true;
     private GameModifier pendingSpecificModifier = null; // Used if pendingRandomModifier is false
     private boolean pendingRandomItem = true;
-    
+
     private static final int INFINITE_EFFECT_DURATION = Integer.MAX_VALUE;
     private static final int ELYTRA_FIREWORK_AMOUNT = 10;
     private static final long ELYTRA_FIREWORK_REFILL_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -129,6 +130,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private final EnumSet<GameModifier> activeModifiers = EnumSet.noneOf(GameModifier.class);
 
     private List<Material> obtainableItemsCache = null;
+    private final Map<Material, Material> blockDropMapping = new HashMap<>();
 
     // World state (for time-related modifiers)
     private Long originalWorldTime = null;
@@ -322,7 +324,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     /**
      * Initialize the block drop mapping for random-block-drops modifier.
-     * Each block type gets assigned one random drop that will be consistent for all blocks of that type.
+     * Each block type gets assigned one random drop that will be consistent for all
+     * blocks of that type.
      */
     private void initializeBlockDropMapping() {
         blockDropMapping.clear();
@@ -337,14 +340,14 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             if (material.isBlock() && !material.isLegacy()) {
                 // Skip unbreakable blocks
                 String name = material.name();
-                if (name.equals("BEDROCK") || name.equals("BARRIER") || 
-                    name.equals("END_PORTAL_FRAME") || name.equals("END_PORTAL") || 
-                    name.equals("NETHER_PORTAL") || name.contains("COMMAND_BLOCK") ||
-                    name.contains("STRUCTURE") || name.equals("JIGSAW") ||
-                    name.equals("MOVING_PISTON") || name.equals("PISTON_HEAD")) {
+                if (name.equals("BEDROCK") || name.equals("BARRIER") ||
+                        name.equals("END_PORTAL_FRAME") || name.equals("END_PORTAL") ||
+                        name.equals("NETHER_PORTAL") || name.contains("COMMAND_BLOCK") ||
+                        name.contains("STRUCTURE") || name.equals("JIGSAW") ||
+                        name.equals("MOVING_PISTON") || name.equals("PISTON_HEAD")) {
                     continue;
                 }
-                
+
                 Material randomDrop = obtainable.get(random.nextInt(obtainable.size()));
                 blockDropMapping.put(material, randomDrop);
             }
@@ -580,7 +583,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                         cancel();
                         return;
                     }
-                    if (gamePaused) return;
+                    if (gamePaused)
+                        return;
                     world.setTime(18000);
                 }
             }.runTaskTimer(this, 0L, 20L);
@@ -601,7 +605,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                         cancel();
                         return;
                     }
-                    if (gamePaused) return;
+                    if (gamePaused)
+                        return;
                     world.setTime(world.getTime() + 1);
                 }
 
@@ -649,7 +654,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (gamePaused) return;
+                if (gamePaused)
+                    return;
 
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (activeModifiers.contains(GameModifier.HOTBAR_ONLY)) {
@@ -1016,7 +1022,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (gamePaused) return;
+                if (gamePaused)
+                    return;
 
                 for (World world : Bukkit.getWorlds()) {
                     for (Item item : world.getEntitiesByClass(Item.class)) {
@@ -1052,7 +1059,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (gamePaused) return;
+                if (gamePaused)
+                    return;
 
                 // Cleanup dead entities from hit tracking every ~5 seconds (10 runs)
                 cleanupCounter++;
@@ -1130,8 +1138,10 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     return;
                 }
                 // Wait for game to actually start (after countdown)
-                if (!gameStarted) return;
-                if (gamePaused) return;
+                if (!gameStarted)
+                    return;
+                if (gamePaused)
+                    return;
 
                 long currentTime = System.currentTimeMillis();
 
@@ -1296,17 +1306,18 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         // Modifier options in rows 3-4 (slots 27-44)
         // First, special options: Random and None
         inv.setItem(20, createModifierOption(null, true, Material.DRAGON_EGG,
-            getMessage("menu-modifier-random"), "Случайный модификатор"));
+                getMessage("menu-modifier-random"), "Случайный модификатор"));
         inv.setItem(24, createModifierOption(null, false, Material.BARRIER,
-            getMessage("menu-modifier-none"), "Без модификатора"));
+                getMessage("menu-modifier-none"), "Без модификатора"));
 
         // All modifiers in rows 3-4
         List<GameModifier> mods = new ArrayList<>(modifierPool);
-        int[] modSlots = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+        int[] modSlots = { 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43 };
         int slotIndex = 0;
 
         for (GameModifier mod : mods) {
-            if (slotIndex >= modSlots.length) break;
+            if (slotIndex >= modSlots.length)
+                break;
             inv.setItem(modSlots[slotIndex], createModifierItem(mod));
             slotIndex++;
         }
@@ -1317,7 +1328,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         startMeta.setDisplayName(getMessage("menu-start-title"));
         List<String> startLore = new ArrayList<>();
         startLore.add("");
-        String itemDisplay = pendingRandomItem ? ChatColor.YELLOW + "Случайный" : ChatColor.AQUA + formatItemName(targetItem);
+        String itemDisplay = pendingRandomItem ? ChatColor.YELLOW + "Случайный"
+                : ChatColor.AQUA + formatItemName(targetItem);
         String modDisplay = getSelectedModifierDisplayName();
         startLore.add(ChatColor.GRAY + "Предмет: " + itemDisplay);
         startLore.add(ChatColor.GRAY + "Модификатор: " + modDisplay);
@@ -1336,7 +1348,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         inv.setItem(50, greenPane);
     }
 
-    private ItemStack createModifierOption(GameModifier mod, boolean isRandom, Material icon, String name, String desc) {
+    private ItemStack createModifierOption(GameModifier mod, boolean isRandom, Material icon, String name,
+            String desc) {
         ItemStack item = new ItemStack(icon);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
@@ -1346,7 +1359,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         lore.add("");
 
         boolean selected = (isRandom && pendingRandomModifier) ||
-                          (!isRandom && !pendingRandomModifier && pendingSpecificModifier == null);
+                (!isRandom && !pendingRandomModifier && pendingSpecificModifier == null);
 
         if (selected) {
             lore.add(ChatColor.GREEN + "✔ ВЫБРАНО");
@@ -1387,17 +1400,28 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     private Material getModifierIcon(GameModifier mod) {
         switch (mod) {
-            case GOLDEN_TOOLS_ONLY: return Material.GOLDEN_PICKAXE;
-            case VEGETARIAN_ONLY: return Material.CARROT;
-            case TIME_X2: return Material.CLOCK;
-            case INFINITE_NIGHT: return Material.BLACK_CONCRETE;
-            case LUNAR_GRAVITY: return Material.FEATHER;
-            case NO_VILLAGER_TRADING: return Material.EMERALD;
-            case RANDOM_BLOCK_DROPS: return Material.DROPPER;
-            case AGGRESSIVE_ANIMALS: return Material.BEEF;
-            case HOTBAR_ONLY: return Material.CHEST;
-            case ELYTRA_MODE: return Material.ELYTRA;
-            default: return Material.PAPER;
+            case GOLDEN_TOOLS_ONLY:
+                return Material.GOLDEN_PICKAXE;
+            case VEGETARIAN_ONLY:
+                return Material.CARROT;
+            case TIME_X2:
+                return Material.CLOCK;
+            case INFINITE_NIGHT:
+                return Material.BLACK_CONCRETE;
+            case LUNAR_GRAVITY:
+                return Material.FEATHER;
+            case NO_VILLAGER_TRADING:
+                return Material.EMERALD;
+            case RANDOM_BLOCK_DROPS:
+                return Material.DROPPER;
+            case AGGRESSIVE_ANIMALS:
+                return Material.BEEF;
+            case HOTBAR_ONLY:
+                return Material.CHEST;
+            case ELYTRA_MODE:
+                return Material.ELYTRA;
+            default:
+                return Material.PAPER;
         }
     }
 
@@ -1457,21 +1481,33 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             return ChatColor.GOLD + getModifierName(pendingSpecificModifier);
         }
     }
-    
+
     private String getModifierName(GameModifier mod) {
-        if (mod == null) return getMessage("modifier-none");
+        if (mod == null)
+            return getMessage("modifier-none");
         switch (mod) {
-            case GOLDEN_TOOLS_ONLY: return getMessage("modifier-golden-tools-only");
-            case VEGETARIAN_ONLY: return getMessage("modifier-vegetarian-only");
-            case TIME_X2: return getMessage("modifier-time-x2");
-            case INFINITE_NIGHT: return getMessage("modifier-infinite-night");
-            case LUNAR_GRAVITY: return getMessage("modifier-lunar-gravity");
-            case NO_VILLAGER_TRADING: return getMessage("modifier-no-villager-trading");
-            case RANDOM_BLOCK_DROPS: return getMessage("modifier-random-block-drops");
-            case AGGRESSIVE_ANIMALS: return getMessage("modifier-aggressive-animals");
-            case HOTBAR_ONLY: return getMessage("modifier-hotbar-only");
-            case ELYTRA_MODE: return getMessage("modifier-elytra-mode");
-            default: return mod.name();
+            case GOLDEN_TOOLS_ONLY:
+                return getMessage("modifier-golden-tools-only");
+            case VEGETARIAN_ONLY:
+                return getMessage("modifier-vegetarian-only");
+            case TIME_X2:
+                return getMessage("modifier-time-x2");
+            case INFINITE_NIGHT:
+                return getMessage("modifier-infinite-night");
+            case LUNAR_GRAVITY:
+                return getMessage("modifier-lunar-gravity");
+            case NO_VILLAGER_TRADING:
+                return getMessage("modifier-no-villager-trading");
+            case RANDOM_BLOCK_DROPS:
+                return getMessage("modifier-random-block-drops");
+            case AGGRESSIVE_ANIMALS:
+                return getMessage("modifier-aggressive-animals");
+            case HOTBAR_ONLY:
+                return getMessage("modifier-hotbar-only");
+            case ELYTRA_MODE:
+                return getMessage("modifier-elytra-mode");
+            default:
+                return mod.name();
         }
     }
 
@@ -1581,40 +1617,37 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         if (command.getName().equalsIgnoreCase("speedrun")) {
             if (args.length == 1) {
-                // First argument: subcommand
+                // First argument: item name or "random"
                 String input = args[0].toLowerCase();
-                String[] subCommands = {"start", "stop", "pause", "resume", "menu"};
-                for (String sub : subCommands) {
-                    if (sub.startsWith(input)) {
-                        completions.add(sub);
-                    }
-                }
-            } else if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
-                // Second argument for start: item name or "random"
-                String input = args[1].toLowerCase();
 
+                // Add special options
                 if ("random".startsWith(input)) {
                     completions.add("random");
                 }
+                if ("случайный".startsWith(input)) {
+                    completions.add("случайный");
+                }
 
-                // Add material names (limited to first 20 matches)
+                // Add material names (limited to first 50 matches for performance)
                 int count = 0;
                 for (Material material : Material.values()) {
-                    if (!material.isItem() || material.isLegacy()) continue;
+                    if (!material.isItem() || material.isLegacy())
+                        continue;
                     String name = material.name().toLowerCase();
                     if (name.startsWith(input)) {
                         completions.add(name);
                         count++;
-                        if (count >= 20) break;
+                        if (count >= 50)
+                            break;
                     }
                 }
             } else if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
                 // Third argument for start: modifier
                 String input = args[2].toLowerCase();
                 String[] modifiers = {
-                    "none", "random", "golden-tools", "vegetarian", "time-x2",
-                    "infinite-night", "lunar-gravity", "no-villager-trading",
-                    "random-block-drops", "aggressive-animals", "hotbar-only", "elytra-mode"
+                        "none", "random", "golden-tools", "vegetarian", "time-x2",
+                        "infinite-night", "lunar-gravity", "no-villager-trading",
+                        "random-block-drops", "aggressive-animals", "hotbar-only", "elytra-mode"
                 };
                 for (String mod : modifiers) {
                     if (mod.startsWith(input)) {
@@ -1631,12 +1664,6 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         gameActive = true;
         landedFromCapsule.clear();
         lastAggressiveAnimalHit.clear();
-        blockDropMapping.clear();
-
-        // Initialize random block drops mapping if modifier is active
-        if (activeModifiers.contains(GameModifier.RANDOM_BLOCK_DROPS)) {
-            initializeBlockDropMapping();
-        }
 
         World world = Bukkit.getWorlds().get(0);
 
@@ -1883,7 +1910,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (gamePaused) return;
+                if (gamePaused)
+                    return;
 
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (player.getInventory().contains(targetItem)) {
@@ -1910,7 +1938,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (gamePaused) return;
+                if (gamePaused)
+                    return;
 
                 String time = startTime > 0 ? formatTime(System.currentTimeMillis() - startTime) : "00:00";
                 String header = getMessage("tab-header", "item", formatItemName(targetItem), "modifier",
@@ -1930,8 +1959,10 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTitle().equals(getMessage(MENU_TITLE_KEY))) {
             event.setCancelled(true);
-            if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
-            if (event.getCurrentItem().getType() == Material.GRAY_STAINED_GLASS_PANE) return;
+            if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR)
+                return;
+            if (event.getCurrentItem().getType() == Material.GRAY_STAINED_GLASS_PANE)
+                return;
 
             Player player = (Player) event.getWhoClicked();
             int slot = event.getSlot();
@@ -1948,7 +1979,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 if (targetItem != null) {
                     pendingRandomItem = false;
                 } else {
-                    player.sendMessage(ChatColor.YELLOW + "Сначала укажите предмет командой: /speedrun start <предмет>");
+                    player.sendMessage(
+                            ChatColor.YELLOW + "Сначала укажите предмет командой: /speedrun start <предмет>");
                 }
                 updateConfigMenu(event.getClickedInventory());
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
@@ -1974,7 +2006,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             }
 
             // Modifier slots (rows 3-4)
-            int[] modSlots = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+            int[] modSlots = { 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43 };
             List<GameModifier> mods = new ArrayList<>(modifierPool);
             for (int i = 0; i < modSlots.length && i < mods.size(); i++) {
                 if (slot == modSlots[i]) {
@@ -2012,7 +2044,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 activeModifiers.clear();
                 if (pendingRandomModifier) {
                     GameModifier randomMod = pickRandomModifier();
-                    if (randomMod != null) activeModifiers.add(randomMod);
+                    if (randomMod != null)
+                        activeModifiers.add(randomMod);
                 } else if (pendingSpecificModifier != null) {
                     activeModifiers.add(pendingSpecificModifier);
                 }
@@ -2046,8 +2079,8 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
                     // Check if trying to shift-click elytra out of armor slot
                     if (event.getClickedInventory() instanceof PlayerInventory &&
-                        current != null && current.getType() == Material.ELYTRA &&
-                        event.getSlot() == 38) { // 38 is chestplate slot
+                            current != null && current.getType() == Material.ELYTRA &&
+                            event.getSlot() == 38) { // 38 is chestplate slot
                         event.setCancelled(true);
                         p.sendMessage("§cВы не можете снять элитры во время модификатора 'Где твои крылья'!");
                         return;
@@ -2059,7 +2092,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     ItemStack cursor = event.getCursor();
                     ItemStack current = event.getCurrentItem();
                     if ((current != null && current.getType() == Material.ELYTRA) ||
-                        (cursor != null && cursor.getType() != Material.AIR)) {
+                            (cursor != null && cursor.getType() != Material.AIR)) {
                         event.setCancelled(true);
                         p.sendMessage("§cВы не можете снять элитры во время модификатора 'Где твои крылья'!");
                         return;
@@ -2263,17 +2296,15 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         // Cancel normal block drops
         event.setDropItems(false);
 
-        // Get the mapped drop for this block type
-        Material blockType = event.getBlock().getType();
-        Material drop = blockDropMapping.get(blockType);
-
-        if (drop != null) {
-            // Drop the assigned random item for this block type
-            event.getBlock().getWorld().dropItemNaturally(
-                event.getBlock().getLocation().add(0.5, 0.5, 0.5),
-                new ItemStack(drop)
-            );
+        List<Material> obtainable = getAllObtainableItems();
+        if (obtainable.isEmpty()) {
+            return;
         }
+
+        // Drop a random item instead of the normal block drop
+        Material drop = obtainable.get(random.nextInt(obtainable.size()));
+        event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                new ItemStack(drop));
     }
 
     // Event handler for fall damage protection
@@ -2417,7 +2448,7 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
             timerDisplayTask.cancel();
         if (tabUpdateTask != null)
             tabUpdateTask.cancel();
-        
+
         gameActive = false;
         gameStarted = false;
 
