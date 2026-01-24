@@ -7,37 +7,11 @@ author: Randomizer
 
 commands:
   speedrun:
-    description: Start a speedrun competition
-    usage: /speedrun <item_id|random> [modifier]
-    permission: speedrun.start
-  speedrunstop:
-    description: Stop current speedrun
-    usage: /speedrunstop
-    permission: speedrun.stop
-  speedrunpause:
-    description: Pause current speedrun
-    usage: /speedrunpause
-    permission: speedrun.pause
-    aliases:
-      - pause
-  speedrunresume:
-    description: Resume paused speedrun
-    usage: /speedrunresume
-    permission: speedrun.resume
-    aliases:
-      - resume
-      - resusme
+    description: Speedrun competition commands
+    usage: /speedrun <start|stop|pause|resume|status> [args...]
+    permission: speedrun.use
 
 permissions:
-  speedrun.start:
-    description: Allows starting a speedrun
-    default: op
-  speedrun.stop:
-    description: Allows stopping a speedrun
-    default: op
-  speedrun.pause:
-    description: Allows pausing a speedrun
-    default: op
-  speedrun.resume:
-    description: Allows resuming a speedrun
+  speedrun.use:
+    description: Allows using speedrun commands
     default: op

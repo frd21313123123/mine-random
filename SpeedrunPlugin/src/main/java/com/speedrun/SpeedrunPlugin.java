@@ -95,10 +95,21 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     // GUI constants
     private static final String MENU_TITLE_KEY = "menu-title";
-    private static final int MENU_SIZE = 27;
-    private static final int SLOT_ITEM = 11;
-    private static final int SLOT_START = 13;
-    private static final int SLOT_MODIFIER = 15;
+    private static final int MENU_SIZE = 54; // 6 rows
+
+    // Row layout (9 slots per row):
+    // Row 0 (0-8): Header/decoration
+    // Row 1 (9-17): Item section
+    // Row 2 (18-26): Modifier header
+    // Row 3 (27-35): Modifiers row 1
+    // Row 4 (36-44): Modifiers row 2
+    // Row 5 (45-53): Start button
+
+    private static final int SLOT_ITEM_LABEL = 9;
+    private static final int SLOT_ITEM_RANDOM = 11;
+    private static final int SLOT_ITEM_SPECIFIC = 13;
+    private static final int SLOT_MODIFIER_LABEL = 18;
+    private static final int SLOT_START = 49;
 
     // GUI State (Transient, per player who opened menu)
     // We only support one pending config at a time (global) because the game is global.
@@ -127,6 +138,9 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     private final Set<UUID> landedFromCapsule = new HashSet<>();
     private final Map<UUID, Long> lastAggressiveAnimalHit = new HashMap<>();
     private final Map<UUID, Long> elytraFireworkLastRefill = new HashMap<>();
+
+    // Random block drops mapping: each block type has one fixed random drop
+    private final Map<Material, Material> blockDropMapping = new HashMap<>();
     private BukkitTask elytraTimerTask = null;
 
     // Modifiers configuration
@@ -304,6 +318,37 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         }
         obtainableItemsCache = Collections.unmodifiableList(items);
         return obtainableItemsCache;
+    }
+
+    /**
+     * Initialize the block drop mapping for random-block-drops modifier.
+     * Each block type gets assigned one random drop that will be consistent for all blocks of that type.
+     */
+    private void initializeBlockDropMapping() {
+        blockDropMapping.clear();
+        List<Material> obtainable = getAllObtainableItems();
+
+        if (obtainable.isEmpty()) {
+            return;
+        }
+
+        // Assign a random drop for each material that can be broken
+        for (Material material : Material.values()) {
+            if (material.isBlock() && !material.isLegacy()) {
+                // Skip unbreakable blocks
+                String name = material.name();
+                if (name.equals("BEDROCK") || name.equals("BARRIER") || 
+                    name.equals("END_PORTAL_FRAME") || name.equals("END_PORTAL") || 
+                    name.equals("NETHER_PORTAL") || name.contains("COMMAND_BLOCK") ||
+                    name.contains("STRUCTURE") || name.equals("JIGSAW") ||
+                    name.equals("MOVING_PISTON") || name.equals("PISTON_HEAD")) {
+                    continue;
+                }
+                
+                Material randomDrop = obtainable.get(random.nextInt(obtainable.size()));
+                blockDropMapping.put(material, randomDrop);
+            }
+        }
     }
 
     private boolean selectGameModifier(String modifierArg, CommandSender sender) {
@@ -1166,89 +1211,251 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     private void openConfigMenu(Player player) {
         org.bukkit.inventory.Inventory inv = Bukkit.createInventory(null, MENU_SIZE, getMessage(MENU_TITLE_KEY));
-        
+
         // Initialize pending state
         pendingRandomModifier = true; // Default to random
         pendingSpecificModifier = null;
         pendingRandomItem = true; // Default to random
-        
-        // If we have a previous target item from a previous game, allow switching to it
-        // (logic handled in click event)
-        
+
         updateConfigMenu(inv);
         player.openInventory(inv);
     }
 
     private void updateConfigMenu(org.bukkit.inventory.Inventory inv) {
-        // 1. Item Selector (Slot 11)
-        ItemStack itemSelector;
-        if (pendingRandomItem) {
-            itemSelector = new ItemStack(Material.CHEST);
-            ItemMeta meta = itemSelector.getItemMeta();
-            meta.setDisplayName(getMessage("menu-item-random"));
-            meta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
-            itemSelector.setItemMeta(meta);
-        } else {
-            // Specific item
-            itemSelector = new ItemStack(targetItem != null ? targetItem : Material.BARRIER);
-            ItemMeta meta = itemSelector.getItemMeta();
-            meta.setDisplayName(getMessage("menu-item-specific", "item", formatItemName(targetItem)));
-            meta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
-            itemSelector.setItemMeta(meta);
+        // Fill background with gray glass
+        ItemStack filler = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta fillerMeta = filler.getItemMeta();
+        fillerMeta.setDisplayName(" ");
+        filler.setItemMeta(fillerMeta);
+        for (int i = 0; i < MENU_SIZE; i++) {
+            inv.setItem(i, filler);
         }
-        inv.setItem(SLOT_ITEM, itemSelector);
 
-        // 2. Start Button (Slot 13)
+        // === ITEM SECTION (Row 1) ===
+        // Label
+        ItemStack itemLabel = new ItemStack(Material.YELLOW_STAINED_GLASS_PANE);
+        ItemMeta labelMeta = itemLabel.getItemMeta();
+        labelMeta.setDisplayName(getMessage("menu-section-item"));
+        itemLabel.setItemMeta(labelMeta);
+        inv.setItem(SLOT_ITEM_LABEL, itemLabel);
+        inv.setItem(SLOT_ITEM_LABEL + 1, itemLabel);
+
+        // Random Item Option
+        ItemStack randomItem = new ItemStack(Material.ENDER_CHEST);
+        ItemMeta randomMeta = randomItem.getItemMeta();
+        randomMeta.setDisplayName(getMessage("menu-item-random"));
+        List<String> randomLore = new ArrayList<>();
+        randomLore.add("");
+        randomLore.add(ChatColor.GRAY + "Будет выбран случайный");
+        randomLore.add(ChatColor.GRAY + "предмет из списка");
+        randomLore.add("");
+        if (pendingRandomItem) {
+            randomLore.add(ChatColor.GREEN + "✔ ВЫБРАНО");
+        } else {
+            randomLore.add(ChatColor.YELLOW + "▶ ЛКМ - Выбрать");
+        }
+        randomMeta.setLore(randomLore);
+        if (pendingRandomItem) {
+            randomMeta.addEnchant(org.bukkit.enchantments.Enchantment.LUCK_OF_THE_SEA, 1, true);
+            randomMeta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        }
+        randomItem.setItemMeta(randomMeta);
+        inv.setItem(SLOT_ITEM_RANDOM, randomItem);
+
+        // Specific Item Option
+        Material specificMat = (targetItem != null) ? targetItem : Material.DIAMOND;
+        ItemStack specificItem = new ItemStack(specificMat);
+        ItemMeta specificMeta = specificItem.getItemMeta();
+        String itemName = (targetItem != null) ? formatItemName(targetItem) : "Не выбран";
+        specificMeta.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + itemName);
+        List<String> specificLore = new ArrayList<>();
+        specificLore.add("");
+        specificLore.add(ChatColor.GRAY + "Конкретный предмет");
+        specificLore.add(ChatColor.DARK_GRAY + "(Введите /speedrun start <предмет>)");
+        specificLore.add("");
+        if (!pendingRandomItem) {
+            specificLore.add(ChatColor.GREEN + "✔ ВЫБРАНО");
+            specificMeta.addEnchant(org.bukkit.enchantments.Enchantment.LUCK_OF_THE_SEA, 1, true);
+            specificMeta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        } else {
+            specificLore.add(ChatColor.YELLOW + "▶ ЛКМ - Выбрать");
+        }
+        specificMeta.setLore(specificLore);
+        specificItem.setItemMeta(specificMeta);
+        inv.setItem(SLOT_ITEM_SPECIFIC, specificItem);
+
+        // === MODIFIER SECTION (Rows 2-4) ===
+        // Label
+        ItemStack modLabel = new ItemStack(Material.MAGENTA_STAINED_GLASS_PANE);
+        ItemMeta modLabelMeta = modLabel.getItemMeta();
+        modLabelMeta.setDisplayName(getMessage("menu-section-modifier"));
+        modLabel.setItemMeta(modLabelMeta);
+        inv.setItem(SLOT_MODIFIER_LABEL, modLabel);
+        inv.setItem(SLOT_MODIFIER_LABEL + 1, modLabel);
+
+        // Modifier options in rows 3-4 (slots 27-44)
+        // First, special options: Random and None
+        inv.setItem(20, createModifierOption(null, true, Material.DRAGON_EGG,
+            getMessage("menu-modifier-random"), "Случайный модификатор"));
+        inv.setItem(24, createModifierOption(null, false, Material.BARRIER,
+            getMessage("menu-modifier-none"), "Без модификатора"));
+
+        // All modifiers in rows 3-4
+        List<GameModifier> mods = new ArrayList<>(modifierPool);
+        int[] modSlots = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+        int slotIndex = 0;
+
+        for (GameModifier mod : mods) {
+            if (slotIndex >= modSlots.length) break;
+            inv.setItem(modSlots[slotIndex], createModifierItem(mod));
+            slotIndex++;
+        }
+
+        // === START BUTTON (Row 5) ===
         ItemStack startBtn = new ItemStack(Material.LIME_CONCRETE);
         ItemMeta startMeta = startBtn.getItemMeta();
         startMeta.setDisplayName(getMessage("menu-start-title"));
-        startMeta.setLore(Collections.singletonList(getMessage("menu-start-lore")));
+        List<String> startLore = new ArrayList<>();
+        startLore.add("");
+        String itemDisplay = pendingRandomItem ? ChatColor.YELLOW + "Случайный" : ChatColor.AQUA + formatItemName(targetItem);
+        String modDisplay = getSelectedModifierDisplayName();
+        startLore.add(ChatColor.GRAY + "Предмет: " + itemDisplay);
+        startLore.add(ChatColor.GRAY + "Модификатор: " + modDisplay);
+        startLore.add("");
+        startLore.add(ChatColor.GREEN + "▶ Нажмите, чтобы начать!");
+        startMeta.setLore(startLore);
         startBtn.setItemMeta(startMeta);
         inv.setItem(SLOT_START, startBtn);
 
-        // 3. Modifier Selector (Slot 15)
-        ItemStack modSelector;
-        String modName;
-        Material modIcon;
-        
-        if (pendingRandomModifier) {
-            modName = "Random";
-            modIcon = Material.COMMAND_BLOCK;
-        } else if (pendingSpecificModifier == null) {
-            modName = getMessage("modifier-none");
-            modIcon = Material.BARRIER;
+        // Decorative blocks around start button
+        ItemStack greenPane = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+        ItemMeta greenMeta = greenPane.getItemMeta();
+        greenMeta.setDisplayName(" ");
+        greenPane.setItemMeta(greenMeta);
+        inv.setItem(48, greenPane);
+        inv.setItem(50, greenPane);
+    }
+
+    private ItemStack createModifierOption(GameModifier mod, boolean isRandom, Material icon, String name, String desc) {
+        ItemStack item = new ItemStack(icon);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(name);
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add(ChatColor.GRAY + desc);
+        lore.add("");
+
+        boolean selected = (isRandom && pendingRandomModifier) ||
+                          (!isRandom && !pendingRandomModifier && pendingSpecificModifier == null);
+
+        if (selected) {
+            lore.add(ChatColor.GREEN + "✔ ВЫБРАНО");
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LUCK_OF_THE_SEA, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
         } else {
-            // Get display name for specific modifier
-            // We need a way to get display name without activeModifiers set. 
-            // Reuse logic or duplicate simple switch? simpler to duplicate for GUI or refactor.
-            // Let's just use the enum name for now or map it.
-            // Actually I can just add a helper method getModifierName(GameModifier)
-            modName = getModifierName(pendingSpecificModifier);
-            modIcon = Material.GOLD_BLOCK; // Generic icon or specific?
-            
-            // Optional: Specific icons
-            switch (pendingSpecificModifier) {
-                case GOLDEN_TOOLS_ONLY: modIcon = Material.GOLDEN_PICKAXE; break;
-                case VEGETARIAN_ONLY: modIcon = Material.CARROT; break;
-                case TIME_X2: modIcon = Material.CLOCK; break;
-                case INFINITE_NIGHT: modIcon = Material.BLACK_BED; break;
-                case LUNAR_GRAVITY: modIcon = Material.FEATHER; break;
-                case NO_VILLAGER_TRADING: modIcon = Material.EMERALD; break;
-                case RANDOM_BLOCK_DROPS: modIcon = Material.DISPENSER; break;
-                case AGGRESSIVE_ANIMALS: modIcon = Material.ZOMBIE_HEAD; break;
-                case HOTBAR_ONLY: modIcon = Material.STRUCTURE_VOID; break;
-                case ELYTRA_MODE: modIcon = Material.ELYTRA; break;
-            }
+            lore.add(ChatColor.YELLOW + "▶ ЛКМ - Выбрать");
         }
-        
-        modSelector = new ItemStack(modIcon);
-        ItemMeta modMeta = modSelector.getItemMeta();
-        modMeta.setDisplayName(getMessage("menu-modifier-title", "modifier", modName));
-        modMeta.setLore(Collections.singletonList(getMessage("menu-item-lore-click")));
-        modSelector.setItemMeta(modMeta);
-        inv.setItem(SLOT_MODIFIER, modSelector);
-        
-        // Fill background? optional.
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack createModifierItem(GameModifier mod) {
+        Material icon = getModifierIcon(mod);
+        ItemStack item = new ItemStack(icon);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.GOLD + getModifierName(mod));
+
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.addAll(getModifierDescription(mod));
+        lore.add("");
+
+        boolean selected = !pendingRandomModifier && pendingSpecificModifier == mod;
+        if (selected) {
+            lore.add(ChatColor.GREEN + "✔ ВЫБРАНО");
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LUCK_OF_THE_SEA, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        } else {
+            lore.add(ChatColor.YELLOW + "▶ ЛКМ - Выбрать");
+        }
+
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private Material getModifierIcon(GameModifier mod) {
+        switch (mod) {
+            case GOLDEN_TOOLS_ONLY: return Material.GOLDEN_PICKAXE;
+            case VEGETARIAN_ONLY: return Material.CARROT;
+            case TIME_X2: return Material.CLOCK;
+            case INFINITE_NIGHT: return Material.BLACK_CONCRETE;
+            case LUNAR_GRAVITY: return Material.FEATHER;
+            case NO_VILLAGER_TRADING: return Material.EMERALD;
+            case RANDOM_BLOCK_DROPS: return Material.DROPPER;
+            case AGGRESSIVE_ANIMALS: return Material.BEEF;
+            case HOTBAR_ONLY: return Material.CHEST;
+            case ELYTRA_MODE: return Material.ELYTRA;
+            default: return Material.PAPER;
+        }
+    }
+
+    private List<String> getModifierDescription(GameModifier mod) {
+        List<String> desc = new ArrayList<>();
+        switch (mod) {
+            case GOLDEN_TOOLS_ONLY:
+                desc.add(ChatColor.GRAY + "Можно использовать");
+                desc.add(ChatColor.GRAY + "только золотые инструменты");
+                break;
+            case VEGETARIAN_ONLY:
+                desc.add(ChatColor.GRAY + "Можно есть только");
+                desc.add(ChatColor.GRAY + "растительную еду");
+                break;
+            case TIME_X2:
+                desc.add(ChatColor.GRAY + "Время идет в 2 раза");
+                desc.add(ChatColor.GRAY + "быстрее");
+                break;
+            case INFINITE_NIGHT:
+                desc.add(ChatColor.GRAY + "Вечная ночь,");
+                desc.add(ChatColor.GRAY + "нельзя спать");
+                break;
+            case LUNAR_GRAVITY:
+                desc.add(ChatColor.GRAY + "Уменьшенная гравитация");
+                desc.add(ChatColor.GRAY + "как на Луне");
+                break;
+            case NO_VILLAGER_TRADING:
+                desc.add(ChatColor.GRAY + "Нельзя торговать");
+                desc.add(ChatColor.GRAY + "с жителями");
+                break;
+            case RANDOM_BLOCK_DROPS:
+                desc.add(ChatColor.GRAY + "С каждого типа блока");
+                desc.add(ChatColor.GRAY + "падает случайный предмет");
+                break;
+            case AGGRESSIVE_ANIMALS:
+                desc.add(ChatColor.GRAY + "Животные становятся");
+                desc.add(ChatColor.GRAY + "агрессивными");
+                break;
+            case HOTBAR_ONLY:
+                desc.add(ChatColor.GRAY + "Можно использовать");
+                desc.add(ChatColor.GRAY + "только 4 слота хотбара");
+                break;
+            case ELYTRA_MODE:
+                desc.add(ChatColor.GRAY + "Начинаете с элитрами");
+                desc.add(ChatColor.GRAY + "и фейерверками");
+                break;
+        }
+        return desc;
+    }
+
+    private String getSelectedModifierDisplayName() {
+        if (pendingRandomModifier) {
+            return ChatColor.LIGHT_PURPLE + "Случайный";
+        } else if (pendingSpecificModifier == null) {
+            return ChatColor.GRAY + "Нет";
+        } else {
+            return ChatColor.GOLD + getModifierName(pendingSpecificModifier);
+        }
     }
     
     private String getModifierName(GameModifier mod) {
@@ -1270,90 +1477,102 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("speedrun")) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage(getMessage("only-player"));
-                return true;
-            }
+        if (!command.getName().equalsIgnoreCase("speedrun")) {
+            return false;
+        }
 
-            if (gameActive) {
-                sender.sendMessage(getMessage("game-already-running"));
-                return true;
-            }
-
-            if (args.length < 1) {
-                // Open GUI if no args
-                openConfigMenu((Player) sender);
-                return true;
-            }
-
-            String itemArg = args[0].toLowerCase();
-
-            // Check for menu command explicitly
-            if (itemArg.equals("menu")) {
-                openConfigMenu((Player) sender);
-                return true;
-            }
-
-            // Check for random mode
-            if (itemArg.equals("random") || itemArg.equals("случайный")) {
-                List<Material> obtainable = getAllObtainableItems();
-                targetItem = obtainable.get(random.nextInt(obtainable.size()));
-                sender.sendMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
-            } else {
-                String itemId = itemArg.replace("minecraft:", "").toUpperCase();
-                try {
-                    targetItem = Material.valueOf(itemId);
-                } catch (IllegalArgumentException e) {
-                    sender.sendMessage(getMessage("unknown-item", "item", args[0]));
-                    sender.sendMessage(getMessage("check-item-id"));
-                    return true;
-                }
-            }
-
-            String modifierArg = args.length >= 2 ? args[1] : null;
-            if (!selectGameModifier(modifierArg, sender)) {
-                return true;
-            }
-
-            startPreGame();
-            return true;
-
-        } else if (command.getName().equalsIgnoreCase("speedrunstop")) {
-            if (!gameActive) {
-                sender.sendMessage(getMessage("game-not-running"));
-                return true;
-            }
-            stopGame();
-            broadcastMessage(getMessage("game-stopped-admin"));
-            return true;
-
-        } else if (command.getName().equalsIgnoreCase("speedrunpause")) {
-            if (!gameActive) {
-                sender.sendMessage(getMessage("game-not-running"));
-                return true;
-            }
-            if (gamePaused) {
-                sender.sendMessage(getMessage("game-already-paused"));
-                return true;
-            }
-            pauseGame();
-            return true;
-
-        } else if (command.getName().equalsIgnoreCase("speedrunresume")) {
-            if (!gameActive) {
-                sender.sendMessage(getMessage("game-not-running"));
-                return true;
-            }
-            if (!gamePaused) {
-                sender.sendMessage(getMessage("game-not-paused"));
-                return true;
-            }
-            resumeGame();
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(getMessage("only-player"));
             return true;
         }
 
-        return false;
+        if (args.length < 1) {
+            // Open GUI if no args
+            openConfigMenu((Player) sender);
+            return true;
+        }
+
+        String subCommand = args[0].toLowerCase();
+
+        switch (subCommand) {
+            case "stop":
+                if (!gameActive) {
+                    sender.sendMessage(getMessage("game-not-running"));
+                    return true;
+                }
+                stopGame();
+                broadcastMessage(getMessage("game-stopped-admin"));
+                return true;
+
+            case "pause":
+                if (!gameActive) {
+                    sender.sendMessage(getMessage("game-not-running"));
+                    return true;
+                }
+                if (gamePaused) {
+                    sender.sendMessage(getMessage("game-already-paused"));
+                    return true;
+                }
+                pauseGame();
+                return true;
+
+            case "resume":
+                if (!gameActive) {
+                    sender.sendMessage(getMessage("game-not-running"));
+                    return true;
+                }
+                if (!gamePaused) {
+                    sender.sendMessage(getMessage("game-not-paused"));
+                    return true;
+                }
+                resumeGame();
+                return true;
+
+            case "menu":
+                openConfigMenu((Player) sender);
+                return true;
+
+            case "start":
+                if (gameActive) {
+                    sender.sendMessage(getMessage("game-already-running"));
+                    return true;
+                }
+
+                if (args.length < 2) {
+                    sender.sendMessage(getMessage("specify-item"));
+                    return true;
+                }
+
+                String itemArg = args[1].toLowerCase();
+
+                // Check for random mode
+                if (itemArg.equals("random") || itemArg.equals("случайный")) {
+                    List<Material> obtainable = getAllObtainableItems();
+                    targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                    sender.sendMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
+                } else {
+                    String itemId = itemArg.replace("minecraft:", "").toUpperCase();
+                    try {
+                        targetItem = Material.valueOf(itemId);
+                    } catch (IllegalArgumentException e) {
+                        sender.sendMessage(getMessage("unknown-item", "item", args[1]));
+                        sender.sendMessage(getMessage("check-item-id"));
+                        return true;
+                    }
+                }
+
+                String modifierArg = args.length >= 3 ? args[2] : null;
+                if (!selectGameModifier(modifierArg, sender)) {
+                    return true;
+                }
+
+                startPreGame();
+                return true;
+
+            default:
+                sender.sendMessage("§cИспользование: /speedrun <start|stop|pause|resume|menu>");
+                return true;
+        }
     }
 
     @Override
@@ -1362,18 +1581,23 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         if (command.getName().equalsIgnoreCase("speedrun")) {
             if (args.length == 1) {
-                // First argument: item name or "random"
+                // First argument: subcommand
                 String input = args[0].toLowerCase();
+                String[] subCommands = {"start", "stop", "pause", "resume", "menu"};
+                for (String sub : subCommands) {
+                    if (sub.startsWith(input)) {
+                        completions.add(sub);
+                    }
+                }
+            } else if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
+                // Second argument for start: item name or "random"
+                String input = args[1].toLowerCase();
 
-                // Add special options
                 if ("random".startsWith(input)) {
                     completions.add("random");
                 }
-                if ("случайный".startsWith(input)) {
-                    completions.add("случайный");
-                }
 
-                // Add material names (limited to first 50 matches for performance)
+                // Add material names (limited to first 20 matches)
                 int count = 0;
                 for (Material material : Material.values()) {
                     if (!material.isItem() || material.isLegacy()) continue;
@@ -1381,12 +1605,12 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                     if (name.startsWith(input)) {
                         completions.add(name);
                         count++;
-                        if (count >= 50) break;
+                        if (count >= 20) break;
                     }
                 }
-            } else if (args.length == 2) {
-                // Second argument: modifier
-                String input = args[1].toLowerCase();
+            } else if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
+                // Third argument for start: modifier
+                String input = args[2].toLowerCase();
                 String[] modifiers = {
                     "none", "random", "golden-tools", "vegetarian", "time-x2",
                     "infinite-night", "lunar-gravity", "no-villager-trading",
@@ -1407,10 +1631,21 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         gameActive = true;
         landedFromCapsule.clear();
         lastAggressiveAnimalHit.clear();
+        blockDropMapping.clear();
+
+        // Initialize random block drops mapping if modifier is active
+        if (activeModifiers.contains(GameModifier.RANDOM_BLOCK_DROPS)) {
+            initializeBlockDropMapping();
+        }
 
         World world = Bukkit.getWorlds().get(0);
 
         applyTimeModifier(world);
+
+        // Set clear weather
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(999999);
 
         // Teleport all players to sky platforms
         teleportPlayersToSkyPlatforms(world);
@@ -1695,68 +1930,85 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTitle().equals(getMessage(MENU_TITLE_KEY))) {
             event.setCancelled(true);
-            if (event.getCurrentItem() == null) return;
-            
+            if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
+            if (event.getCurrentItem().getType() == Material.GRAY_STAINED_GLASS_PANE) return;
+
             Player player = (Player) event.getWhoClicked();
             int slot = event.getSlot();
-            
-            if (slot == SLOT_ITEM) {
-                // Toggle Random Item <-> Specific (if set previously, otherwise just stay Random)
-                // Since we don't have an anvil GUI, let's just toggle Random ON/OFF if targetItem is already set.
-                // If targetItem is null, we can only be Random.
+
+            // Item selection
+            if (slot == SLOT_ITEM_RANDOM) {
+                pendingRandomItem = true;
+                updateConfigMenu(event.getClickedInventory());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+                return;
+            }
+
+            if (slot == SLOT_ITEM_SPECIFIC) {
                 if (targetItem != null) {
-                    pendingRandomItem = !pendingRandomItem;
-                    // If we switched to specific but targetItem is null (shouldn't happen with logic above), switch back
+                    pendingRandomItem = false;
                 } else {
-                    pendingRandomItem = true;
-                    // Maybe play a sound indicating "Use command to set specific item first"
+                    player.sendMessage(ChatColor.YELLOW + "Сначала укажите предмет командой: /speedrun start <предмет>");
                 }
                 updateConfigMenu(event.getClickedInventory());
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
-            } else if (slot == SLOT_MODIFIER) {
-                // Cycle modifiers: Random -> None -> [List...] -> Random
-                if (pendingRandomModifier) {
+                return;
+            }
+
+            // Modifier: Random (slot 20)
+            if (slot == 20) {
+                pendingRandomModifier = true;
+                pendingSpecificModifier = null;
+                updateConfigMenu(event.getClickedInventory());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+                return;
+            }
+
+            // Modifier: None (slot 24)
+            if (slot == 24) {
+                pendingRandomModifier = false;
+                pendingSpecificModifier = null;
+                updateConfigMenu(event.getClickedInventory());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+                return;
+            }
+
+            // Modifier slots (rows 3-4)
+            int[] modSlots = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+            List<GameModifier> mods = new ArrayList<>(modifierPool);
+            for (int i = 0; i < modSlots.length && i < mods.size(); i++) {
+                if (slot == modSlots[i]) {
                     pendingRandomModifier = false;
-                    pendingSpecificModifier = null; // None
-                } else if (pendingSpecificModifier == null) {
-                    // Was None, go to first modifier
-                    if (!modifierPool.isEmpty()) {
-                        pendingSpecificModifier = modifierPool.iterator().next();
-                    } else {
-                        // No modifiers available, go back to Random
-                        pendingRandomModifier = true;
-                    }
-                } else {
-                    // Go to next modifier
-                    List<GameModifier> mods = new ArrayList<>(modifierPool);
-                    int index = mods.indexOf(pendingSpecificModifier);
-                    if (index >= 0 && index < mods.size() - 1) {
-                        pendingSpecificModifier = mods.get(index + 1);
-                    } else {
-                        // End of list, go back to Random
-                        pendingRandomModifier = true;
-                        pendingSpecificModifier = null;
-                    }
+                    pendingSpecificModifier = mods.get(i);
+                    updateConfigMenu(event.getClickedInventory());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+                    return;
                 }
-                updateConfigMenu(event.getClickedInventory());
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
-            } else if (slot == SLOT_START) {
+            }
+
+            // Start button
+            if (slot == SLOT_START) {
+                if (gameActive) {
+                    player.sendMessage(getMessage("game-already-running"));
+                    player.closeInventory();
+                    return;
+                }
+
                 player.closeInventory();
-                
+
                 // Configure game based on pending settings
                 if (pendingRandomItem) {
                     List<Material> obtainable = getAllObtainableItems();
                     targetItem = obtainable.get(random.nextInt(obtainable.size()));
                     broadcastMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
                 } else {
-                    // Use existing targetItem
                     if (targetItem == null) {
-                         // Fallback
-                         List<Material> obtainable = getAllObtainableItems();
-                         targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                        List<Material> obtainable = getAllObtainableItems();
+                        targetItem = obtainable.get(random.nextInt(obtainable.size()));
+                        broadcastMessage(getMessage("random-item-selected", "item", formatItemName(targetItem)));
                     }
                 }
-                
+
                 activeModifiers.clear();
                 if (pendingRandomModifier) {
                     GameModifier randomMod = pickRandomModifier();
@@ -1764,9 +2016,11 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
                 } else if (pendingSpecificModifier != null) {
                     activeModifiers.add(pendingSpecificModifier);
                 }
-                
+
                 startPreGame();
+                return;
             }
+
             return;
         }
 
@@ -2009,15 +2263,17 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
         // Cancel normal block drops
         event.setDropItems(false);
 
-        List<Material> obtainable = getAllObtainableItems();
-        if (obtainable.isEmpty()) {
-            return;
-        }
+        // Get the mapped drop for this block type
+        Material blockType = event.getBlock().getType();
+        Material drop = blockDropMapping.get(blockType);
 
-        // Drop a random item instead of the normal block drop
-        Material drop = obtainable.get(random.nextInt(obtainable.size()));
-        event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
-                new ItemStack(drop));
+        if (drop != null) {
+            // Drop the assigned random item for this block type
+            event.getBlock().getWorld().dropItemNaturally(
+                event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                new ItemStack(drop)
+            );
+        }
     }
 
     // Event handler for fall damage protection

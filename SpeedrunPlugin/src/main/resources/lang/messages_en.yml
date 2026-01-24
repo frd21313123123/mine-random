@@ -4,14 +4,15 @@
 # General messages
 prefix: "&6[Speedrun] "
 only-player: "&cThis command can only be executed by a player!"
-game-already-running: "&cGame is already running! Use /speedrunstop to stop."
+game-already-running: "&cGame is already running! Use /speedrun stop to stop."
 game-not-running: "&cGame is not running."
 game-stopped-admin: "&e⚠ Speedrun stopped by administrator!"
 
 # Command usage
-usage: "&cUsage: /speedrun <item_id|random> [modifier]"
-usage-example: "&7Example: /speedrun minecraft:diamond"
-usage-random: "&7Or: /speedrun random — random item"
+usage: "&cUsage: /speedrun start <item|random> [modifier]"
+usage-example: "&7Example: /speedrun start diamond"
+usage-random: "&7Or: /speedrun start random — random item"
+specify-item: "&cSpecify item: /speedrun start <item|random>"
 unknown-item: "&cUnknown item: %item%"
 check-item-id: "&7Make sure the ID is correct (e.g.: minecraft:diamond)"
 
@@ -98,10 +99,76 @@ technical-victory-broadcast-title: "&e🏅 %player% 🏅"
 technical-victory-broadcast-subtitle: "&7Technical Victory | &aTime: %time%"
 
 # GUI Menu
-menu-title: "&8Speedrun Config"
-menu-item-random: "&eRandom Item"
-menu-item-specific: "&eCurrent Item: &b%item%"
+menu-title: "&0&l✦ &8&lSPEEDRUN CONFIG &0&l✦"
+menu-item-random: "&e&l? RANDOM ITEM"
+menu-item-random-lore:
+  - ""
+  - "&7A random item will"
+  - "&7be selected"
+  - ""
+  - "&a▶ LMB &8- &fSelect"
+menu-item-specific: "&b&l%item%"
+menu-item-specific-lore:
+  - ""
+  - "&7Target item"
+  - ""
+  - "&a▶ LMB &8- &fRandom"
 menu-item-lore-click: "&7Click to toggle"
+menu-modifier-random: "&d&l? RANDOM"
+menu-modifier-random-lore:
+  - ""
+  - "&7Modifier will be selected"
+  - "&7randomly"
+  - ""
+  - "&a▶ LMB &8- &fSelect"
+menu-modifier-none: "&7&lNO MODIFIER"
+menu-modifier-none-lore:
+  - ""
+  - "&7Game without modifiers"
+  - ""
+  - "&a▶ LMB &8- &fSelect"
 menu-modifier-title: "&6Modifier: &b%modifier%"
-menu-start-title: "&a▶ START GAME"
-menu-start-lore: "&7Click to start"
+menu-modifier-selected: "&a✔ SELECTED"
+menu-modifier-click-select: "&e▶ LMB &8- &fSelect"
+menu-start-title: "&a&l▶ START"
+menu-start-lore:
+  - ""
+  - "&7Item: &b%item%"
+  - "&7Modifier: &d%modifier%"
+  - ""
+  - "&a▶ Click to start!"
+menu-section-item: "&e&lITEM"
+menu-section-modifier: "&d&lMODIFIER"
+menu-section-settings: "&b&lSETTINGS"
+
+# Modifier descriptions for menu
+menu-mod-golden-tools-desc:
+  - "&7Can only use"
+  - "&7golden tools"
+menu-mod-vegetarian-desc:
+  - "&7Can only eat"
+  - "&7plant-based food"
+menu-mod-time-x2-desc:
+  - "&7Time passes"
+  - "&72x faster"
+menu-mod-infinite-night-desc:
+  - "&7Eternal night,"
+  - "&7no sleeping"
+menu-mod-lunar-gravity-desc:
+  - "&7Reduced gravity"
+  - "&7like on the Moon"
+menu-mod-no-villager-trading-desc:
+  - "&7Cannot trade"
+  - "&7with villagers"
+menu-mod-random-block-drops-desc:
+  - "&7Each block type drops"
+  - "&7a random item"
+menu-mod-aggressive-animals-desc:
+  - "&7Animals become"
+  - "&7aggressive"
+menu-mod-hotbar-only-desc:
+  - "&7Can only use"
+  - "&74 hotbar slots"
+menu-mod-elytra-mode-desc:
+  - "&7Start with elytra"
+  - "&7and fireworks"
