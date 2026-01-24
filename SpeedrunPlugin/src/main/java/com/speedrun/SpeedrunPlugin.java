@@ -1362,27 +1362,18 @@ public class SpeedrunPlugin extends JavaPlugin implements Listener {
 
         if (command.getName().equalsIgnoreCase("speedrun")) {
             if (args.length == 1) {
-                // First argument: item name or "random"
+                // First argument: only main options
                 String input = args[0].toLowerCase();
 
-                // Add special options
+                // Add only main options
                 if ("random".startsWith(input)) {
                     completions.add("random");
                 }
                 if ("случайный".startsWith(input)) {
                     completions.add("случайный");
                 }
-
-                // Add material names (limited to first 50 matches for performance)
-                int count = 0;
-                for (Material material : Material.values()) {
-                    if (!material.isItem() || material.isLegacy()) continue;
-                    String name = material.name().toLowerCase();
-                    if (name.startsWith(input)) {
-                        completions.add(name);
-                        count++;
-                        if (count >= 50) break;
-                    }
+                if ("menu".startsWith(input)) {
+                    completions.add("menu");
                 }
             } else if (args.length == 2) {
                 // Second argument: modifier
